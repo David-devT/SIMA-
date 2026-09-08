@@ -1,0 +1,133 @@
+---
+/**
+ * @file legal.astro
+ * @route /legal
+ * @description Documento formal de términos legales, descargo de responsabilidad técnica,
+ * régimen de propiedad intelectual y política de datos para la República de Colombia.
+ */
+
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+  title="Marco Legal, Términos y Licencia | SIMA Colombia"
+  description="Fundamento jurídico bajo la Ley 23 de 1982, Decreto 1076 de 2015, acreditación IDEAM y términos de la Licencia MIT."
+>
+  <div class="max-w-4xl mx-auto space-y-8 py-4">
+    <!-- Header -->
+    <div class="border-b border-white/[0.08] pb-4">
+      <a href="/" class="text-xs font-mono text-blue-400 hover:underline mb-2 inline-block">
+        ← Volver al inicio
+      </a>
+      <h1 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+        Marco Legal, Responsabilidad y Licenciamiento
+      </h1>
+      <p class="text-xs font-mono text-slate-400 mt-1">
+        SIMA Colombia • Sistema Integral de Monitoreo Ambiental
+      </p>
+    </div>
+
+    <!-- Secciones del Dictamen Legal -->
+    <div class="space-y-6 text-sm text-slate-300 leading-relaxed font-sans">
+      
+      <!-- 0. Naturaleza del Proyecto (Práctica Personal) -->
+      <section class="p-6 rounded-2xl bg-[#091122] border border-blue-500/30 space-y-3">
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-blue-400"></span>
+          <h2 class="text-base font-bold text-white uppercase tracking-wide font-mono text-xs">
+            Declaración de Proyecto Personal y Fines Educativos
+          </h2>
+        </div>
+        <p class="text-xs sm:text-sm text-blue-200/90 leading-relaxed">
+          Esta aplicación web ha sido concebida, diseñada y desarrollada por su autor como un <strong>ejercicio de práctica personal, aprendizaje técnico y experimentación académica</strong>. Su objetivo es explorar la integración de tecnologías modernas de desarrollo frontend (Astro, Svelte 5, Tailwind CSS y TypeScript) y simular la lógica de cómputo algorítmico de la normativa ambiental de Colombia.
+        </p>
+        <p class="text-xs text-slate-400">
+          El proyecto <strong>no es una iniciativa comercial, ni un servicio profesional remunerado, ni una plataforma institucional u oficial</strong> de ningún organismo gubernamental. Todos los módulos, cálculos y datos han sido elaborados con propósitos puramente didácticos e ilustrativos.
+        </p>
+      </section>
+
+      <!-- 1. Libre Reproducción Normativa -->
+      <section class="p-6 rounded-2xl bg-[#060a14] border border-white/[0.08] space-y-3">
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+          <h2 class="text-base font-bold text-white uppercase tracking-wide font-mono text-xs">
+            1. Fundamento de Libre Reproducción de Normas Oficiales
+          </h2>
+        </div>
+        <p>
+          De conformidad con el <strong>Artículo 41 de la Ley 23 de 1982</strong> de la República de Colombia (Ley sobre Derechos de Autor):
+        </p>
+        <blockquote class="p-3.5 rounded-xl bg-black/40 border-l-2 border-emerald-500 text-xs font-mono text-emerald-300/90 italic">
+          "Es permitido a todos reproducir la Constitución, leyes, decretos, ordenanzas, acuerdos, reglamentos, demás actos administrativos y decisiones judiciales, bajo la obligación de conformarse puntualmente con la edición oficial, siempre y cuando no esté prohibido."
+        </blockquote>
+        <p class="text-xs text-slate-400">
+          La parametrización de rangos numéricos, artículos legales y tolerancias correspondientes a la <strong>Resolución 2115 de 2007</strong> (Agua Potable), <strong>Resolución 0631 de 2015</strong> (Vertimientos ARD y ARnD) y <strong>Decreto 1076 de 2015</strong> (Cuerpos de Agua Superficiales) cumple estrictamente con el principio de fidelidad a la edición oficial del Estado y es de libre utilización comunitaria e institucional.
+        </p>
+      </section>
+
+      <!-- 2. Descargo de Responsabilidad Técnica -->
+      <section class="p-6 rounded-2xl bg-[#060a14] border border-white/[0.08] space-y-3">
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+          <h2 class="text-base font-bold text-white uppercase tracking-wide font-mono text-xs">
+            2. Descargo de Responsabilidad (Disclaimer Legal)
+          </h2>
+        </div>
+        <p>
+          SIMA Colombia es una herramienta digital de cálculo normativo, simulación y pre-evaluación analítica con propósitos <strong>estrictamente informativos, técnicos y pedagógicos</strong>.
+        </p>
+        <p class="text-xs text-slate-400">
+          Las clasificaciones generadas por el motor de inferencia (<strong>CUMPLE</strong>, <strong>ALERTA PREVENTIVA</strong>, <strong>NO CUMPLE</strong>) reflejan únicamente una comparación algorítmica y <strong>NO CONSTITUYEN certificación oficial, dictamen pericial ni concepto técnico vinculante</strong> ante el Ministerio de Ambiente y Desarrollo Sostenible, Ministerio de Salud, Autoridad Nacional de Licencias Ambientales (ANLA), Corporaciones Autónomas Regionales (CAR) ni secretarías gubernamentales.
+        </p>
+      </section>
+
+      <!-- 3. Exigencia de Laboratorios Acreditados IDEAM -->
+      <section class="p-6 rounded-2xl bg-[#060a14] border border-white/[0.08] space-y-3">
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-blue-400"></span>
+          <h2 class="text-base font-bold text-white uppercase tracking-wide font-mono text-xs">
+            3. Validez Probatoria y Acreditación de Laboratorios (IDEAM)
+          </h2>
+        </div>
+        <p>
+          En los términos del <strong>Decreto 1076 de 2015</strong> y las directrices del Sistema Nacional Ambiental (SINA), todo análisis físico-químico, microbiológico o toxicológico que deba ser aportado como prueba formal en expedientes ambientales o sanitarios debe ser emitido por un <strong>laboratorio acreditado por el Instituto de Hidrología, Meteorología y Estudios Ambientales (IDEAM)</strong> bajo la norma <strong>NTC-ISO/IEC 17025</strong>.
+        </p>
+        <p class="text-xs text-slate-400">
+          Esta plataforma opera como soporte de análisis preliminar para operadores de plantas (PTAR/PTAP), ingenieros y consultores, pero no reemplaza el muestreo ni los ensayos acreditados.
+        </p>
+      </section>
+
+      <!-- 4. Licencia de Software MIT -->
+      <section class="p-6 rounded-2xl bg-[#060a14] border border-white/[0.08] space-y-3">
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+          <h2 class="text-base font-bold text-white uppercase tracking-wide font-mono text-xs">
+            4. Términos de Licencia MIT (Open Source)
+          </h2>
+        </div>
+        <div class="p-4 rounded-xl bg-black/60 font-mono text-xs text-slate-400 space-y-2 border border-white/[0.06]">
+          <p class="font-bold text-slate-300">Copyright (c) 2026 SIMA Colombia</p>
+          <p>
+            Se concede permiso, libre de cargos, a cualquier persona que obtenga una copia de este software y de los archivos de documentación asociados (el "Software"), para utilizar el Software sin restricción, incluyendo sin limitación los derechos a usar, copiar, modificar, fusionar, publicar, distribuir, sublicenciar y/o vender copias del Software.
+          </p>
+          <p class="text-amber-300/90 uppercase font-semibold">
+            EL SOFTWARE SE ENTREGA "TAL CUAL" ("AS IS"), SIN GARANTÍA DE NINGÚN TIPO, EXPRESA O IMPLÍCITA. EN NINGÚN CASO LOS AUTORES O TITULARES DEL DERECHO DE AUTOR SERÁN RESPONSABLES POR NINGÚN RECLAMO, DAÑO O PERJUICIO DERIVADO DEL USO DEL SOFTWARE.
+          </p>
+        </div>
+      </section>
+
+      <!-- 5. Política de Privacidad y Habeas Data -->
+      <section class="p-6 rounded-2xl bg-[#060a14] border border-white/[0.08] space-y-3">
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+          <h2 class="text-base font-bold text-white uppercase tracking-wide font-mono text-xs">
+            5. Tratamiento de Datos (Ley 1581 de 2012)
+          </h2>
+        </div>
+        <p class="text-xs text-slate-400">
+          La aplicación ejecuta la totalidad de sus algoritmos de cómputo en la memoria del navegador del usuario (client-side execution). No se transfieren mediciones, nombres de predios ni coordenadas a servidores externos, garantizando el pleno cumplimiento del régimen de Habeas Data de la República de Colombia.
+        </p>
+      </section>
+    </div>
+  </div>
+</Layout>

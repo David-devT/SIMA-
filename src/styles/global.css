@@ -1,0 +1,113 @@
+/**
+ * @file global.css
+ * @description Sistema de diseño base y tokens visuales para la plataforma SIMA.
+ * 
+ * Filosofía de Estilo:
+ * - Minimalist Dark Palette: Negro profundo (#030712), Azul técnico (#2563eb/#0284c7) y Verde (#10b981).
+ * - Reduced Visual Noise: Eliminación de gradientes estridentes y destellos innecesarios.
+ * - Hardware Acceleration: Uso de transform3d y will-change implícito para animaciones fluidas a 60fps.
+ */
+
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    /* Color Tokens - Minimal Dark Architecture */
+    --color-bg-base: #030712;
+    --color-bg-surface: #070d18;
+    --color-bg-card: #0b1322;
+    --color-border-subtle: rgba(255, 255, 255, 0.06);
+    --color-border-hover: rgba(255, 255, 255, 0.12);
+    --color-accent-emerald: #10b981;
+    --color-accent-blue: #0284c7;
+  }
+
+  body {
+    background-color: var(--color-bg-base);
+    color: #e2e8f0;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* ==========================================================================
+   Antigravity Animation Presets (Minimalist Precision Glows)
+   ========================================================================== */
+
+@keyframes antigravity-pulse-green {
+  0%, 100% {
+    box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.4), 0 0 10px rgba(16, 185, 129, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.8), 0 0 16px rgba(16, 185, 129, 0.25);
+  }
+}
+
+@keyframes antigravity-warning-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.4), 0 0 10px rgba(245, 158, 11, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.8), 0 0 16px rgba(245, 158, 11, 0.25);
+  }
+}
+
+@keyframes antigravity-shake-critico {
+  0%, 100% {
+    transform: translateX(0);
+    box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.6), 0 0 14px rgba(239, 68, 68, 0.25);
+  }
+  25% {
+    transform: translateX(-3px);
+  }
+  75% {
+    transform: translateX(3px);
+  }
+}
+
+.antigravity-pulse-green {
+  animation: antigravity-pulse-green 3s infinite ease-in-out;
+}
+
+.antigravity-warning-glow {
+  animation: antigravity-warning-glow 2s infinite ease-in-out;
+}
+
+.antigravity-shake-critico {
+  animation: antigravity-shake-critico 0.4s ease-in-out;
+}
+
+/* Glassmorphism sutil sin saturación de color */
+.glass-panel-subtle {
+  background: rgba(7, 13, 24, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--color-border-subtle);
+}
+
+.card-minimal {
+  background: #090f1d;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card-minimal:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* ==========================================================================
+   Form Controls: Suprime spinners nativos de HTML5 para evitar solapamiento
+   con badges de unidades y permitir controles de flechas estilizados.
+   ========================================================================== */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}

@@ -1,0 +1,94 @@
+---
+/**
+ * @file Layout.astro
+ * @description Master layout component implementing Astro's Islands Architecture shell.
+ * 
+ * Performance & Architecture Considerations:
+ * - Zero JS Baseline: Este layout no inyecta runtime de JavaScript en el cliente a menos
+ *   que un componente hijo lo declare explícitamente mediante una directiva `client:*`.
+ * - Font Loading Optimization: Preconnect hints y display swap para prevenir layout shifts (CLS).
+ * - Minimalist Theme: Base sobria en negro (#030712) y carbón, acentos en verde esmeralda y azul técnico.
+ */
+
+import '../styles/global.css';
+import FooterLegal from '../components/FooterLegal.svelte';
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const { 
+  title = "SIMA Colombia | Sistema Integral de Monitoreo Ambiental", 
+  description = "Evaluación normativa de matrices de calidad ambiental en Colombia bajo resoluciones del MinAmbiente." 
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="es" class="dark scroll-smooth">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    
+    <!-- Preconnect hints para Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  </head>
+  <body class="bg-[#030712] text-slate-200 min-h-screen flex flex-col font-['Plus_Jakarta_Sans',sans-serif] selection:bg-emerald-500 selection:text-black">
+    <!-- Header Institucional Minimalista -->
+    <header class="sticky top-0 z-40 w-full glass-panel-subtle border-b border-white/[0.06]">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
+        <a href="/" class="flex items-center gap-2.5 group">
+          <div class="w-8 h-8 rounded-lg bg-emerald-950/80 border border-emerald-500/30 flex items-center justify-center text-sm group-hover:border-emerald-400 transition-colors">
+            🌱
+          </div>
+          <div class="flex items-baseline gap-2">
+            <span class="font-bold text-sm tracking-tight text-white group-hover:text-emerald-300 transition-colors">
+              SIMA Colombia
+            </span>
+            <span class="hidden sm:inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded bg-blue-950/40 text-blue-400 border border-blue-500/20">
+              Práctica Personal • Fines Educativos
+            </span>
+          </div>
+        </a>
+
+        <!-- Enlaces Principales de Navegación -->
+        <nav class="flex items-center gap-2">
+          <a 
+            href="/" 
+            class="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-white/[0.04] transition"
+          >
+            Inicio
+          </a>
+          <a 
+            href="/agua" 
+            class="px-3 py-1.5 rounded-lg text-xs font-medium text-emerald-400 bg-emerald-950/40 border border-emerald-500/20 hover:border-emerald-500/40 transition flex items-center gap-1.5"
+          >
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+            Muestreo de Agua
+          </a>
+          <a 
+            href="https://www.minambiente.gov.co" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            class="hidden sm:flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-mono text-slate-500 hover:text-slate-300 border border-white/[0.04] hover:border-white/[0.08] transition"
+          >
+            MinAmbiente ↗
+          </a>
+        </nav>
+      </div>
+    </header>
+
+    <!-- Main Content Slot -->
+    <main class="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <slot />
+    </main>
+
+    <!-- Footer Institucional con Modal Legal Interactivo -->
+    <FooterLegal client:load />
+  </body>
+</html>

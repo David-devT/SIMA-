@@ -1,0 +1,81 @@
+# ==============================================================================
+# .gitignore - SIMA Colombia (Fines Educativos)
+# Configuración estricta para evitar la subida de archivos de entorno local,
+# herramientas de desarrollo, credenciales y archivos temporales a GitHub.
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. Herramientas de Desarrollo y Entornos de Asistencia / IA (Local Only)
+# ------------------------------------------------------------------------------
+AGENTS.md
+CLAUDE.md
+*.agent.md
+.cursor/
+.cursorrules
+.claude/
+.gemini/
+.copilot/
+scratch/
+tmp/
+temp/
+
+# ------------------------------------------------------------------------------
+# 2. Configuración de Editores e IDEs (Entorno de Desarrollo Local)
+# ------------------------------------------------------------------------------
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ------------------------------------------------------------------------------
+# 3. Salida de Compilación y Artefactos de Build
+# ------------------------------------------------------------------------------
+dist/
+build/
+.astro/
+
+# ------------------------------------------------------------------------------
+# 4. Dependencias de Node.js y Gestores de Paquetes
+# ------------------------------------------------------------------------------
+node_modules/
+.pnpm-store/
+
+# ------------------------------------------------------------------------------
+# 5. Variables de Entorno, Claves y Secretos (Seguridad Crítica)
+# ------------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.env
+*.pem
+*.key
+*.cert
+*.crt
+secrets.*
+credentials.*
+
+# ------------------------------------------------------------------------------
+# 6. Registros y Logs de Ejecución
+# ------------------------------------------------------------------------------
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ------------------------------------------------------------------------------
+# 7. Archivos de Sistema Operativo
+# ------------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+[Dd]esktop.ini

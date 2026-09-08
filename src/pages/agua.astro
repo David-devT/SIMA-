@@ -1,0 +1,22 @@
+---
+/**
+ * @file agua.astro
+ * @route /agua
+ * @description Vista especializada del evaluador normativo de calidad de aguas en Colombia.
+ * 
+ * Patrones de Implementación:
+ * - Islands Architecture: La isla interactiva `<EvaluadorAgua client:load />` gestiona
+ *   el ciclo reactivo de inputs, validación contra la matriz legal y renderizado de diagnósticos.
+ * - SEO Metadata: Inyección estática de títulos canónicos, normas y directivas de indexación.
+ */
+
+import Layout from '../layouts/Layout.astro';
+import EvaluadorAgua from '../components/EvaluadorAgua.svelte';
+---
+
+<Layout 
+  title="Monitoreo de Calidad de Agua | Res. 2115/2007, Res. 0631/2015, Dec. 1076/2015"
+  description="Módulo de evaluación fisicoquímica y microbiológica de aguas en Colombia. Selección de norma, parámetros y diagnóstico legal en tiempo real."
+>
+  <EvaluadorAgua client:load />
+</Layout>

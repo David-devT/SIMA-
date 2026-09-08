@@ -1,0 +1,55 @@
+MIT License
+
+Copyright (c) 2026 SIMA Colombia - Sistema Integral de Monitoreo Ambiental
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+--------------------------------------------------------------------------------
+AVISO LEGAL COMPLEMENTARIO Y DESCARGO DE RESPONSABILIDAD (REPÚBLICA DE COLOMBIA)
+--------------------------------------------------------------------------------
+
+0. NATURALEZA DEL PROYECTO (PRÁCTICA PERSONAL Y FINES EDUCATIVOS):
+Este software ha sido desarrollado única y exclusivamente como un ejercicio de
+práctica personal, estudio técnico individual y fines estrictamente educativos.
+No constituye un producto comercial, ni un servicio pericial, ni una plataforma
+oficial de ningún organismo gubernamental.
+
+1. REPRODUCCIÓN DE NORMAS OFICIALES:
+Conforme al Artículo 41 de la Ley 23 de 1982 de la República de Colombia, es permitida
+la libre reproducción de leyes, decretos, resoluciones y demás actos administrativos oficiales
+(incluyendo la Resolución 2115 de 2007, Resolución 0631 de 2015 y Decreto 1076 de 2015),
+siempre que se conserven fielmente los límites y disposiciones de las ediciones oficiales del Estado.
+
+2. ALCANCE INFORMATIVO Y PEDAGÓGICO:
+SIMA Colombia es una herramienta digital de cálculo normativo y pre-evaluación analítica.
+Los diagnósticos, alertas y semáforos generados por el software NO CONSTITUYEN certificación oficial,
+dictamen pericial ni concepto técnico vinculante ante autoridades ambientales (Corporaciones
+Autónomas Regionales - CAR, Autoridad Nacional de Licencias Ambientales - ANLA, Ministerio de Ambiente
+y Desarrollo Sostenible, o Ministerio de Salud y Protección Social).
+
+3. EXIGENCIA DE ACREDITACIÓN DE LABORATORIOS (IDEAM):
+De acuerdo con el Decreto 1076 de 2015 y la legislación ambiental colombiana, cualquier reporte
+con validez probatoria oficial sobre calidad de agua y vertimientos requiere toma de muestras,
+custodia y ensayos ejecutados por laboratorios formalmente acreditados por el Instituto de
+Hidrología, Meteorología y Estudios Ambientales (IDEAM) bajo la norma técnica NTC-ISO/IEC 17025.
+
+4. PROTECCIÓN DE DATOS PERSONALES:
+La aplicación ejecuta sus algoritmos de cómputo en la memoria del navegador del cliente (client-side),
+sin almacenar registros, nombres ni coordenadas en servidores remotos, en concordancia con
+los postulados de la Ley 1581 de 2012 (Habeas Data).

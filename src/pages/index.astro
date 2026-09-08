@@ -1,0 +1,22 @@
+---
+/**
+ * @file index.astro
+ * @route / (Landing Page)
+ * @description Punto de entrada principal para el portal de monitoreo ambiental SIMA.
+ * 
+ * Estrategia de Renderizado:
+ * - Static Site Generation (SSG): Astro compila el layout como HTML estático en build-time.
+ * - Partial Hydration Island: El componente `<LandingCards client:load />` se hidrata
+ *   de forma aislada e inmediata para habilitar las interacciones de los modales y enrutamiento.
+ */
+
+import Layout from '../layouts/Layout.astro';
+import LandingCards from '../components/LandingCards.svelte';
+---
+
+<Layout 
+  title="SIMA Colombia | Sistema Integral de Monitoreo Ambiental"
+  description="Plataforma de evaluación normativa para calidad de agua, suelo, aire y audio en la República de Colombia."
+>
+  <LandingCards client:load />
+</Layout>
