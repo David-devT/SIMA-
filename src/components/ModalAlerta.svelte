@@ -8,12 +8,14 @@
   - Minimal Design: Contraste sobrio en negro, azul marino y verde, sin ruido visual.
 -->
 <script lang="ts">
+  import Icon from './icons/Icon.svelte';
+
   // Props tipadas estrictas con Svelte 5 runes
   let { 
     visible = $bindable(false), 
     titulo = "Módulo en Desarrollo", 
     mensaje = "Próximamente...",
-    icono = "🚧"
+    icono = "construction"
   } = $props<{
     visible?: boolean;
     titulo?: string;
@@ -57,8 +59,8 @@
 
     <!-- Modal Card Surface -->
     <div class="relative w-full max-w-sm p-6 rounded-2xl bg-[#090e19] border border-white/10 shadow-2xl text-center">
-      <div class="w-12 h-12 mx-auto mb-3 rounded-xl bg-blue-950/40 border border-blue-500/20 flex items-center justify-center text-xl text-blue-400">
-        {icono}
+      <div class="w-12 h-12 mx-auto mb-3 rounded-xl bg-blue-950/40 border border-blue-500/20 flex items-center justify-center text-blue-400">
+        <Icon name={icono} size={24} />
       </div>
 
       <span class="inline-block px-2.5 py-0.5 mb-2 text-[10px] font-mono uppercase tracking-wider text-blue-400 bg-blue-950/50 border border-blue-800/40 rounded-md">

@@ -87,7 +87,7 @@ export const INFORMACION_NORMAS_AGUA: Record<TipoNorma, InfoNormaAgua> = {
     subtitulo: 'Redes de distribución y plantas de potabilización',
     norma: 'Resolución 2115 de 2007 (MPS / MADS)',
     descripcion: 'Control físico-químico y microbiológico para garantizar inocuidad en el agua distribuida a poblaciones humanas.',
-    icono: '💧',
+    icono: 'droplet',
     colorBadge: 'bg-emerald-950/60 text-emerald-400 border-emerald-800/40'
   },
   AGUA_RESIDUAL_DOMESTICA: {
@@ -96,7 +96,7 @@ export const INFORMACION_NORMAS_AGUA: Record<TipoNorma, InfoNormaAgua> = {
     subtitulo: 'Vertimientos sanitarios y alcantarillados municipales',
     norma: 'Resolución 0631 de 2015 Art. 8',
     descripcion: 'Límites máximos permisibles de vertimiento puntual en efluentes domésticos hacia cuerpos hídricos receptores.',
-    icono: '🏠',
+    icono: 'home',
     colorBadge: 'bg-blue-950/60 text-blue-400 border-blue-800/40'
   },
   AGUA_RESIDUAL_NO_DOMESTICA: {
@@ -105,7 +105,7 @@ export const INFORMACION_NORMAS_AGUA: Record<TipoNorma, InfoNormaAgua> = {
     subtitulo: 'Descargas industriales, comerciales y productivas',
     norma: 'Resolución 0631 de 2015 Art. 10',
     descripcion: 'Criterios de vertimiento para metales pesados, hidrocarburos, tensoactivos y materia orgánica en procesos industriales.',
-    icono: '🏭',
+    icono: 'factory',
     colorBadge: 'bg-zinc-900 text-zinc-300 border-zinc-700/60'
   },
   AGUA_SUPERFICIAL_PRESERVACION: {
@@ -114,7 +114,7 @@ export const INFORMACION_NORMAS_AGUA: Record<TipoNorma, InfoNormaAgua> = {
     subtitulo: 'Protección de flora y fauna en ecosistemas lóticos y lénticos',
     norma: 'Decreto 1076 de 2015 / Dec. 1594 de 1984',
     descripcion: 'Criterios de calidad ecológica para soporte de vida acuática en corrientes de aguas cálidas y frías.',
-    icono: '🌿',
+    icono: 'leaf',
     colorBadge: 'bg-emerald-950/60 text-emerald-400 border-emerald-800/40'
   },
   AGUA_SUPERFICIAL_CONSUMO: {
@@ -123,7 +123,7 @@ export const INFORMACION_NORMAS_AGUA: Record<TipoNorma, InfoNormaAgua> = {
     subtitulo: 'Fuentes hídricas destinadas a potabilización',
     norma: 'Decreto 1076 de 2015 Título 9',
     descripcion: 'Límites de admisibilidad en bocatomas de ríos y embalses previo a desinfección o tratamiento convencional.',
-    icono: '🏔️',
+    icono: 'mountain',
     colorBadge: 'bg-blue-950/60 text-blue-400 border-blue-800/40'
   }
 };

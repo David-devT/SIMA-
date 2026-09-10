@@ -12,6 +12,7 @@
 
 import '../styles/global.css';
 import FooterLegal from '../components/FooterLegal.svelte';
+import Icon from '../components/icons/Icon.svelte';
 
 interface Props {
   title?: string;
@@ -41,41 +42,44 @@ const {
   <body class="bg-[#030712] text-slate-200 min-h-screen flex flex-col font-['Plus_Jakarta_Sans',sans-serif] selection:bg-emerald-500 selection:text-black">
     <!-- Header Institucional Minimalista -->
     <header class="sticky top-0 z-40 w-full glass-panel-subtle border-b border-white/[0.06]">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
-        <a href="/" class="flex items-center gap-2.5 group">
-          <div class="w-8 h-8 rounded-lg bg-emerald-950/80 border border-emerald-500/30 flex items-center justify-center text-sm group-hover:border-emerald-400 transition-colors">
-            🌱
+      <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
+        <a href="/" class="flex items-center gap-2 sm:gap-2.5 group shrink-0 min-h-[44px]">
+          <div class="w-8 h-8 rounded-lg bg-emerald-950/80 border border-emerald-500/30 flex items-center justify-center group-hover:border-emerald-400 transition-colors shrink-0">
+            <Icon name="sprout" size={16} class="text-emerald-400 group-hover:scale-110 transition-transform" />
           </div>
-          <div class="flex items-baseline gap-2">
+          <div class="flex items-baseline gap-1.5 sm:gap-2">
             <span class="font-bold text-sm tracking-tight text-white group-hover:text-emerald-300 transition-colors">
-              SIMA Colombia
+              SIMA
             </span>
-            <span class="hidden sm:inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded bg-blue-950/40 text-blue-400 border border-blue-500/20">
+            <span class="hidden xs:inline font-bold text-sm tracking-tight text-white">
+              Colombia
+            </span>
+            <span class="hidden md:inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded bg-blue-950/40 text-blue-400 border border-blue-500/20">
               Práctica Personal • Fines Educativos
             </span>
           </div>
         </a>
 
-        <!-- Enlaces Principales de Navegación -->
-        <nav class="flex items-center gap-2">
+        <!-- Enlaces Principales de Navegación con Touch Targets Ergonómicos -->
+        <nav class="flex items-center gap-1 sm:gap-2">
           <a 
             href="/" 
-            class="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-white/[0.04] transition"
+            class="min-h-[40px] px-2.5 sm:px-3 py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-white/[0.04] transition flex items-center"
           >
             Inicio
           </a>
           <a 
             href="/agua" 
-            class="px-3 py-1.5 rounded-lg text-xs font-medium text-emerald-400 bg-emerald-950/40 border border-emerald-500/20 hover:border-emerald-500/40 transition flex items-center gap-1.5"
+            class="min-h-[40px] px-2.5 sm:px-3 py-2 rounded-lg text-xs font-medium text-emerald-400 bg-emerald-950/40 border border-emerald-500/20 hover:border-emerald-500/40 transition flex items-center gap-1.5"
           >
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-            Muestreo de Agua
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"></span>
+            <span>Muestreo<span class="hidden sm:inline"> de Agua</span></span>
           </a>
           <a 
             href="https://www.minambiente.gov.co" 
             target="_blank" 
             rel="noopener noreferrer"
-            class="hidden sm:flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-mono text-slate-500 hover:text-slate-300 border border-white/[0.04] hover:border-white/[0.08] transition"
+            class="hidden sm:flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-mono text-slate-500 hover:text-slate-300 border border-white/[0.04] hover:border-white/[0.08] transition min-h-[40px]"
           >
             MinAmbiente ↗
           </a>
@@ -83,8 +87,8 @@ const {
       </div>
     </header>
 
-    <!-- Main Content Slot -->
-    <main class="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Main Content Slot con Padding Adaptativo para Móviles -->
+    <main class="flex-1 w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8">
       <slot />
     </main>
 

@@ -9,6 +9,8 @@
   - Minimal UI: Estilo sobrio en negro, bordes zinc sutiles y acentos técnicos en azul y verde.
 -->
 <script lang="ts">
+  import Icon from './icons/Icon.svelte';
+
   let { visible = $bindable(false) } = $props<{ visible?: boolean }>();
 
   let seccionActiva = $state<'DISCLAIMER' | 'IDEAM' | 'LICENCIA' | 'DATOS'>('DISCLAIMER');
@@ -44,8 +46,8 @@
       <!-- Header -->
       <div class="p-4 sm:p-5 border-b border-white/[0.06] flex items-center justify-between bg-[#040812]">
         <div class="flex items-center gap-2.5">
-          <div class="w-8 h-8 rounded-lg bg-blue-950/60 border border-blue-500/30 flex items-center justify-center text-sm text-blue-400">
-            ⚖️
+          <div class="w-8 h-8 rounded-lg bg-blue-950/60 border border-blue-500/30 flex items-center justify-center text-blue-400">
+            <Icon name="scale" size={16} class="text-blue-400" />
           </div>
           <div>
             <h2 id="modal-legal-titulo" class="text-sm sm:text-base font-bold text-white">
@@ -60,40 +62,40 @@
         <button
           type="button"
           onclick={cerrar}
-          class="w-7 h-7 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-slate-400 hover:text-white flex items-center justify-center transition text-xs cursor-pointer"
-          aria-label="Cerrar"
+          class="min-h-[36px] min-w-[36px] rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-slate-400 hover:text-white flex items-center justify-center transition text-sm cursor-pointer active:bg-white/15"
+          aria-label="Cerrar modal legal"
         >
-          ✕
+          <Icon name="x" size={14} />
         </button>
       </div>
 
-      <!-- Navigation Tabs -->
-      <div class="flex items-center gap-1 p-2 bg-[#050914] border-b border-white/[0.04] overflow-x-auto text-[11px] font-mono">
+      <!-- Navigation Tabs con Touch Targets Óptimos -->
+      <div class="flex items-center gap-1.5 p-2 bg-[#050914] border-b border-white/[0.04] overflow-x-auto text-[11px] font-mono">
         <button
           type="button"
           onclick={() => seccionActiva = 'DISCLAIMER'}
-          class="px-3 py-1.5 rounded-lg transition-colors cursor-pointer shrink-0 {seccionActiva === 'DISCLAIMER' ? 'bg-blue-950/80 text-blue-400 border border-blue-500/30' : 'text-slate-400 hover:text-slate-200'}"
+          class="min-h-[36px] px-3 py-1.5 rounded-lg transition-colors cursor-pointer shrink-0 {seccionActiva === 'DISCLAIMER' ? 'bg-blue-950/80 text-blue-400 border border-blue-500/30' : 'text-slate-400 hover:text-slate-200'}"
         >
           1. Alcance & Validez
         </button>
         <button
           type="button"
           onclick={() => seccionActiva = 'IDEAM'}
-          class="px-3 py-1.5 rounded-lg transition-colors cursor-pointer shrink-0 {seccionActiva === 'IDEAM' ? 'bg-blue-950/80 text-blue-400 border border-blue-500/30' : 'text-slate-400 hover:text-slate-200'}"
+          class="min-h-[36px] px-3 py-1.5 rounded-lg transition-colors cursor-pointer shrink-0 {seccionActiva === 'IDEAM' ? 'bg-blue-950/80 text-blue-400 border border-blue-500/30' : 'text-slate-400 hover:text-slate-200'}"
         >
           2. Acreditación IDEAM
         </button>
         <button
           type="button"
           onclick={() => seccionActiva = 'LICENCIA'}
-          class="px-3 py-1.5 rounded-lg transition-colors cursor-pointer shrink-0 {seccionActiva === 'LICENCIA' ? 'bg-blue-950/80 text-blue-400 border border-blue-500/30' : 'text-slate-400 hover:text-slate-200'}"
+          class="min-h-[36px] px-3 py-1.5 rounded-lg transition-colors cursor-pointer shrink-0 {seccionActiva === 'LICENCIA' ? 'bg-blue-950/80 text-blue-400 border border-blue-500/30' : 'text-slate-400 hover:text-slate-200'}"
         >
           3. Licencia MIT
         </button>
         <button
           type="button"
           onclick={() => seccionActiva = 'DATOS'}
-          class="px-3 py-1.5 rounded-lg transition-colors cursor-pointer shrink-0 {seccionActiva === 'DATOS' ? 'bg-blue-950/80 text-blue-400 border border-blue-500/30' : 'text-slate-400 hover:text-slate-200'}"
+          class="min-h-[36px] px-3 py-1.5 rounded-lg transition-colors cursor-pointer shrink-0 {seccionActiva === 'DATOS' ? 'bg-blue-950/80 text-blue-400 border border-blue-500/30' : 'text-slate-400 hover:text-slate-200'}"
         >
           4. Datos & Privacidad
         </button>
@@ -104,12 +106,18 @@
         {#if seccionActiva === 'DISCLAIMER'}
           <div class="space-y-3">
             <div class="p-3 rounded-xl bg-blue-950/40 border border-blue-500/30 text-blue-300">
-              <span class="font-bold block text-xs mb-1">🎓 Proyecto de Práctica Personal:</span>
+              <span class="flex items-center gap-1.5 font-bold text-xs mb-1">
+                <Icon name="academic" size={14} class="text-blue-400" />
+                <span>Proyecto de Práctica Personal:</span>
+              </span>
               Esta aplicación fue desarrollada por su autor con <strong>fines estrictamente educativos, académicos y de práctica personal</strong> en desarrollo web y simulación de normatividad ambiental. No constituye un servicio comercial ni una plataforma oficial de ninguna entidad gubernamental.
             </div>
 
             <div class="p-3 rounded-xl bg-emerald-950/30 border border-emerald-500/20 text-emerald-300">
-              <span class="font-bold block text-xs mb-1">✓ Fundamento de Libre Reproducción:</span>
+              <span class="flex items-center gap-1.5 font-bold text-xs mb-1">
+                <Icon name="shield-check" size={14} class="text-emerald-400" />
+                <span>Fundamento de Libre Reproducción:</span>
+              </span>
               De conformidad con el <strong>Artículo 41 de la Ley 23 de 1982</strong> de la República de Colombia, las leyes, decretos y resoluciones oficiales son de dominio público y su estudio/reproducción con fines pedagógicos y técnicos es completamente lícito.
             </div>
 
@@ -121,7 +129,10 @@
         {:else if seccionActiva === 'IDEAM'}
           <div class="space-y-3">
             <div class="p-3 rounded-xl bg-blue-950/30 border border-blue-500/20 text-blue-300">
-              <span class="font-bold block text-xs mb-1">ℹ️ Exigencia de Acreditación Oficial:</span>
+              <span class="flex items-center gap-1.5 font-bold text-xs mb-1">
+                <Icon name="scale" size={14} class="text-blue-400" />
+                <span>Exigencia de Acreditación Oficial:</span>
+              </span>
               Conforme al <strong>Decreto 1076 de 2015</strong>, los análisis físicos, químicos e hidrobiológicos con validez jurídica oficial deben ser ejecutados por laboratorios acreditados por el <strong>IDEAM</strong>.
             </div>
 

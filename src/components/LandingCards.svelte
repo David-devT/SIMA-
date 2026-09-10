@@ -11,16 +11,17 @@
 -->
 <script lang="ts">
   import ModalAlerta from './ModalAlerta.svelte';
+  import Icon from './icons/Icon.svelte';
 
   // Svelte 5 reactive state para control del modal
   let modalVisible = $state(false);
   let moduloSeleccionado = $state('Muestreo Ambiental');
-  let iconoSeleccionado = $state('🚧');
+  let iconoSeleccionado = $state('construction');
 
   /**
    * Manejador de eventos para matrices no habilitadas
    * @param nombre Etiqueta descriptiva del módulo
-   * @param icono Emoji identificador
+   * @param icono Identificador del icono SVG
    */
   function notificarModuloInactivo(nombre: string, icono: string): void {
     moduloSeleccionado = nombre;
@@ -34,12 +35,12 @@
   <div class="max-w-3xl space-y-3">
     <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-blue-950/40 border border-blue-500/20 text-blue-400 text-xs font-mono">
       <span class="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
-      Proyecto de Práctica Personal • Fines Educativos y de Aprendizaje
+      Proyecto de Práctica Personal • Fines Educativos
     </div>
-    <h1 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight">
+    <h1 class="text-2xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight">
       Simulador de Calidad Ambiental
     </h1>
-    <p class="text-sm sm:text-base text-slate-400 leading-relaxed max-w-2xl">
+    <p class="text-xs sm:text-base text-slate-400 leading-relaxed max-w-2xl">
       Herramienta de estudio y práctica desarrollada de forma independiente para simular la evaluación de parámetros físico-químicos frente a las resoluciones ambientales de Colombia (Res. 2115/2007, Res. 0631/2015 y Dec. 1076/2015).
     </p>
   </div>
@@ -57,11 +58,11 @@
       <!-- 1. Muestreo de Agua (ACTIVA - Enlace a /agua) -->
       <a
         href="/agua"
-        class="card-minimal rounded-xl p-6 relative group hover:border-emerald-500/40 block focus:outline-none focus:ring-1 focus:ring-emerald-500"
+        class="card-minimal rounded-xl p-4 sm:p-6 relative group hover:border-emerald-500/40 block focus:outline-none focus:ring-1 focus:ring-emerald-500"
       >
         <div class="flex items-start justify-between mb-4">
-          <div class="w-11 h-11 rounded-lg bg-emerald-950/60 border border-emerald-500/30 flex items-center justify-center text-xl text-emerald-400">
-            💧
+          <div class="w-11 h-11 rounded-lg bg-emerald-950/60 border border-emerald-500/30 flex items-center justify-center text-emerald-400 group-hover:scale-105 transition-transform">
+            <Icon name="droplet" size={22} class="text-emerald-400" />
           </div>
           <span class="px-2.5 py-0.5 rounded text-[11px] font-mono font-medium text-emerald-400 bg-emerald-950/60 border border-emerald-500/30">
             Disponible
@@ -86,12 +87,12 @@
       <!-- 2. Muestreo de Suelo (INACTIVA - Dispara Modal) -->
       <button
         type="button"
-        onclick={() => notificarModuloInactivo('Muestreo de Calidad de Suelos', '🌱')}
-        class="card-minimal rounded-xl p-6 text-left w-full cursor-pointer hover:border-blue-500/30 focus:outline-none focus:ring-1 focus:ring-blue-500"
+        onclick={() => notificarModuloInactivo('Muestreo de Calidad de Suelos', 'sprout')}
+        class="card-minimal rounded-xl p-4 sm:p-6 text-left w-full cursor-pointer hover:border-blue-500/30 focus:outline-none focus:ring-1 focus:ring-blue-500 group"
       >
         <div class="flex items-start justify-between mb-4">
-          <div class="w-11 h-11 rounded-lg bg-blue-950/40 border border-blue-500/20 flex items-center justify-center text-xl text-blue-400">
-            🌱
+          <div class="w-11 h-11 rounded-lg bg-blue-950/40 border border-blue-500/20 flex items-center justify-center text-blue-400 group-hover:scale-105 transition-transform">
+            <Icon name="sprout" size={22} class="text-blue-400" />
           </div>
           <span class="px-2.5 py-0.5 rounded text-[11px] font-mono text-slate-400 bg-zinc-900 border border-white/10">
             Próximamente
@@ -127,11 +128,13 @@
       <!-- Aire -->
       <button
         type="button"
-        onclick={() => notificarModuloInactivo('Muestreo de Aire (Res. 2254 de 2017)', '💨')}
-        class="card-minimal rounded-xl p-4 text-left cursor-pointer hover:border-blue-500/30"
+        onclick={() => notificarModuloInactivo('Muestreo de Aire (Res. 2254 de 2017)', 'wind')}
+        class="card-minimal rounded-xl p-4 text-left cursor-pointer hover:border-blue-500/30 group"
       >
         <div class="flex items-center justify-between mb-2">
-          <span class="text-lg">💨</span>
+          <div class="w-8 h-8 rounded-lg bg-blue-950/40 border border-blue-500/20 flex items-center justify-center text-blue-400 group-hover:scale-105 transition-transform">
+            <Icon name="wind" size={16} class="text-blue-400" />
+          </div>
           <span class="text-[10px] font-mono text-blue-400 bg-blue-950/40 border border-blue-800/40 px-2 py-0.5 rounded">
             Res. 2254/2017
           </span>
@@ -146,11 +149,13 @@
       <!-- Audio / Ruido -->
       <button
         type="button"
-        onclick={() => notificarModuloInactivo('Muestreo de Audio y Ruido Ambiental (Res. 0627 de 2006)', '🔊')}
-        class="card-minimal rounded-xl p-4 text-left cursor-pointer hover:border-blue-500/30"
+        onclick={() => notificarModuloInactivo('Muestreo de Audio y Ruido Ambiental (Res. 0627 de 2006)', 'volume')}
+        class="card-minimal rounded-xl p-4 text-left cursor-pointer hover:border-blue-500/30 group"
       >
         <div class="flex items-center justify-between mb-2">
-          <span class="text-lg">🔊</span>
+          <div class="w-8 h-8 rounded-lg bg-blue-950/40 border border-blue-500/20 flex items-center justify-center text-blue-400 group-hover:scale-105 transition-transform">
+            <Icon name="volume" size={16} class="text-blue-400" />
+          </div>
           <span class="text-[10px] font-mono text-blue-400 bg-blue-950/40 border border-blue-800/40 px-2 py-0.5 rounded">
             Res. 0627/2006
           </span>
@@ -165,11 +170,13 @@
       <!-- Otros Muestreos -->
       <button
         type="button"
-        onclick={() => notificarModuloInactivo('Otras Matrices: Olores Ofensivos y Residuos Especiales', '🔬')}
-        class="card-minimal rounded-xl p-4 text-left cursor-pointer hover:border-blue-500/30"
+        onclick={() => notificarModuloInactivo('Otras Matrices: Olores Ofensivos y Residuos Especiales', 'flask')}
+        class="card-minimal rounded-xl p-4 text-left cursor-pointer hover:border-blue-500/30 group"
       >
         <div class="flex items-center justify-between mb-2">
-          <span class="text-lg">🔬</span>
+          <div class="w-8 h-8 rounded-lg bg-blue-950/40 border border-blue-500/20 flex items-center justify-center text-blue-400 group-hover:scale-105 transition-transform">
+            <Icon name="flask" size={16} class="text-blue-400" />
+          </div>
           <span class="text-[10px] font-mono text-blue-400 bg-blue-950/40 border border-blue-800/40 px-2 py-0.5 rounded">
             Res. 1541/2013
           </span>
