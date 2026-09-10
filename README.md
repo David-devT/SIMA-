@@ -1,171 +1,250 @@
-# SIMA Colombia — Sistema Integral de Monitoreo Ambiental
+<div align="center">
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
-[![Framework](https://img.shields.io/badge/Framework-Astro_v7-FF5D01.svg)](https://astro.build)
-[![UI](https://img.shields.io/badge/UI-Svelte_5_Runes-FF3E00.svg)](https://svelte.dev)
-[![Styles](https://img.shields.io/badge/Styles-Tailwind_CSS_v4-06B6D4.svg)](https://tailwindcss.com)
-[![Language](https://img.shields.io/badge/Language-TypeScript_Strict-3178C6.svg)](https://www.typescriptlang.org)
-[![Package Manager](https://img.shields.io/badge/Package_Manager-pnpm-F69220.svg)](https://pnpm.io)
+# 💧 SIMA Colombia
 
-Plataforma interactiva para la simulación, pre-evaluación técnica y análisis normativo de calidad de agua en la República de Colombia.
+### Sistema Integral de Monitoreo y Simulación de Calidad Ambiental
+
+**Plataforma analítica para la pre-evaluación normativa y contraste técnico de parámetros de agua en la República de Colombia.**
+
+[![Astro](https://img.shields.io/badge/Astro-7.x-FF5D01?style=for-the-badge&logo=astro&logoColor=white)](https://astro.build)
+[![Svelte](https://img.shields.io/badge/Svelte-5.x_Runes-FF3E00?style=for-the-badge&logo=svelte&logoColor=white)](https://svelte.dev)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.x-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
+[![TypeScript](https://img.shields.io/badge/TypeScript-Strict-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![pnpm](https://img.shields.io/badge/pnpm-11.x-F69220?style=for-the-badge&logo=pnpm&logoColor=white)](https://pnpm.io)
+[![License: MIT](https://img.shields.io/badge/License-MIT-10B981?style=for-the-badge)](./LICENSE)
+
+</div>
 
 ---
 
 > [!NOTE]
-> **Declaración de Propósito Educativo**  
-> Este proyecto fue desarrollado como un **ejercicio de práctica personal, estudio técnico y aprendizaje académico**. Su propósito es explorar la integración de arquitecturas frontend modernas con modelos de inferencia basados en normativas ambientales colombianas. No representa una plataforma gubernamental oficial ni un servicio pericial vinculante.
+> **Declaración de Proyecto Personal y Fines Educativos:**  
+> Este software fue concebido, diseñado y construido de forma independiente como un **ejercicio de práctica personal, aprendizaje técnico y exploración académica**. Su objetivo es investigar la aplicación de arquitecturas web modernas (Islands Architecture, Runes reactivos y estilos utilitarios) en la modelación algorítmica de la legislación ambiental colombiana. No constituye una plataforma gubernamental oficial ni un servicio pericial vinculante.
 
 ---
 
-## Tabla de Contenidos
+## 📌 Descripción
 
-- [Resumen del Proyecto](#resumen-del-proyecto)
-- [Matrices Normativas Soportadas](#matrices-normativas-soportadas)
-- [Características Principales](#características-principales)
-- [Arquitectura y Tecnologías](#arquitectura-y-tecnologías)
-- [Estructura del Repositorio](#estructura-del-repositorio)
-- [Instalación y Uso Local](#instalación-y-uso-local)
-- [Marco Legal y Licencia](#marco-legal-y-licencia)
+**SIMA Colombia** es una plataforma web interactiva de alto rendimiento desarrollada para simular y pre-evaluar el cumplimiento normativo de muestras fisicoquímicas y microbiológicas frente a las resoluciones ambientales vigentes emitidas por el Ministerio de Ambiente y Desarrollo Sostenible (MADS) y el Ministerio de la Protección Social (MPS).
+
+La aplicación opera bajo un **motor de inferencia analítica determinista** que contrasta mediciones cuantitativas en tiempo real contra los topes máximos permisibles de la legislación nacional, diagnosticando cada parámetro en estados de **Conformidad**, **Alerta Preventiva** o **Incumplimiento Crítico**, citando de manera precisa el articulado legal y la resolución correspondiente.
+
+Todo el procesamiento se ejecuta estrictamente en la memoria del navegador del cliente (**Client-Side Only**), garantizando cero persistencia de datos sensibles en la nube, máxima privacidad bajo la Ley de Habeas Data y una velocidad de respuesta instantánea.
 
 ---
 
-## Resumen del Proyecto
+## 🚀 Características Principales
 
-**SIMA Colombia** permite ingresar mediciones fisicoquímicas y microbiológicas de muestras de agua para contrastarlas de forma determinista y en tiempo real contra los valores máximos permisibles definidos por la legislación ambiental vigente en Colombia.
-
-El evaluador clasifica cada parámetro en tres estados:
-- **Conforme (Verde):** El valor medido se encuentra dentro del rango admisible por la norma.
-- **Alerta Preventiva (Ámbar):** El valor medido se aproxima al límite máximo permisible (≥ 80% del tope legal).
-- **No Conforme (Rojo):** El valor incumple el límite normativo establecido.
-
----
-
-## Matrices Normativas Soportadas
-
-1. **Agua para Consumo Humano (Agua Potable)**
-   - Norma: *Resolución 2115 de 2007* (Ministerio de la Protección Social y MinAmbiente).
-   - Parámetros clave: pH, Turbiedad, Cloro Residual Libre, Color Aparente, Conductividad, Coliformes Totales y *E. coli*.
-
-2. **Aguas Residuales Domésticas (ARD)**
-   - Norma: *Resolución 0631 de 2015, Artículo 8* (Vertimientos a cuerpos de agua superficiales).
-   - Parámetros clave: DBO₅, DQO, Sólidos Suspendidos Totales (SST), Grasas y Aceites, pH.
-
-3. **Aguas Residuales No Domésticas (ARnD - Industrial y Comercial)**
-   - Norma: *Resolución 0631 de 2015, Artículo 10*.
-   - Parámetros clave: DBO₅, DQO, SST, Hidrocarburos Totales, Sustancias Activas al Azul de Metileno (SAAM).
-
-4. **Agua Superficial — Preservación de Flora y Fauna**
-   - Norma: *Decreto 1076 de 2015* (Sector Ambiente y Desarrollo Sostenible).
-   - Parámetros clave: Oxígeno Disuelto (OD), pH, Temperatura, Criterios de vida acuática.
-
-5. **Agua Superficial — Captación y Consumo Humano**
-   - Norma: *Decreto 1076 de 2015, Título 9*.
-   - Parámetros clave: Criterios de admisibilidad de fuentes de agua cruda previo a potabilización.
+- ⚡ **Islands Architecture (Arquitectura de Islas)**: Shell estático ultraligero impulsado por Astro con hidratación parcial aislada únicamente en los componentes con interactividad reactiva.
+- 🔄 **Reactividad Quirúrgica con Svelte 5 (Runes)**: Gestión de estado reactivo mediante `$state` y selectores memorizados con `$derived`, eliminando la sobrecarga computacional del Virtual DOM.
+- 🎯 **Preselección Inteligente (Noise Reduction)**: Al seleccionar cualquier norma, el sistema activa por defecto los 5 o 6 parámetros fundamentales obligatorios según la ley, permitiendo habilitar variables adicionales bajo demanda para evitar fatiga cognitiva.
+- 📱 **Diseño Ergonómico y Accesibilidad Móvil (A11y)**:
+  - Selector de normas en carrusel horizontal táctil (`snap-x`) para pantallas verticales.
+  - Panel de selección de parámetros colapsable en teléfonos para enfocar la pantalla en las mediciones.
+  - Soporte de `inputmode="decimal"` para despliegue automático del teclado numérico en smartphones.
+  - Prevención de auto-zoom en iOS Safari (`text-base` en campos móviles) y áreas de toque ergonómicas (mínimo 40px).
+- 🎛️ **Controles Stepper Adaptativos**: Entradas numéricas con micro-flechas desktop y botones táctiles dedicados (`+` / `−`) en móviles para evitar solapamientos con unidades complejas (`mg/L`, `UNT`, `UPC`, `UFC/100 mL`).
+- 🧪 **Simulador de Escenarios de Prueba**: Modelación rápida con un clic para escenarios de *Conformidad*, *Alerta Preventiva* e *Incumplimiento Normativo*.
+- 🎨 **Iconografía Vectorial SVG Nativa**: Sistema integral de iconos vectoriales SVG de alta precisión (`Icon.svelte`), sin uso de emojis heterogéneos, preservando una paleta sobria en negro carbón (`#030712`), verde esmeralda y azul técnico.
+- 🔒 **Privacidad por Diseño (Cero Cookies)**: Sin cookies de rastreo, sin almacenamiento invasivo y sin transferencia de coordenadas ni parámetros a servidores externos.
 
 ---
 
-## Características Principales
-
-- **Arquitectura de Islas (Islands Architecture):** Generación de páginas estáticas ultra ligeras con hidratación interactiva aislada únicamente donde se requiere.
-- **Reactividad con Svelte 5:** Empleo del nuevo modelo de *Runes* (`$state`, `$derived`) para un rendimiento de cómputo reactivo óptimo sin overhead de virtual DOM.
-- **Preselección Inteligente:** Carga por defecto con los parámetros principales obligatorios por norma para evitar fatiga visual, permitiendo habilitar parámetros complementarios según el análisis requerido.
-- **Controles Numéricos Optimizados:** Campos con controles numéricos adaptados que evitan sobreposiciones con unidades de medida complejas (`mg/L`, `UNT`, `UPC`, `UFC/100 mL`).
-- **Simulador de Escenarios:** Presets para poblar rápidamente casos de prueba en estado conforme, preventivo o crítico con un solo clic.
-- **Diseño Minimalista Técnico:** Paleta enfocada en alto contraste, legibilidad y sobriedad visual en fondos oscuros (`#030712`), esmeralda y cian técnico.
-- **Procesamiento Exclusivamente Local:** Todo el cálculo se ejecuta en el navegador del usuario en memoria; no se transfieren datos a servicios externos.
-
----
-
-## Arquitectura y Tecnologías
-
-| Componente | Tecnología | Propósito |
-| :--- | :--- | :--- |
-| **Framework Base** | Astro v7 | Renderizado estático (SSG), enrutamiento rápido y arquitectura de componentes desacoplada. |
-| **Capa Interactiva** | Svelte 5 | Interfaz reactiva con Runes de alto rendimiento y footprint mínimo de JavaScript. |
-| **Estilizado** | Tailwind CSS v4 | Sistema de diseño declarativo de última generación compilado a CSS nativo. |
-| **Tipado** | TypeScript (Modo Estricto) | Tipado formal de parámetros, normas, rangos y validadores analíticos. |
-| **Gestor de Paquetes** | pnpm v11 | Gestión eficiente, rápida y determinista de dependencias. |
-
----
-
-## Estructura del Repositorio
+## 🏗️ Arquitectura del Sistema
 
 ```text
-proyecto-ambiental/
-├── public/                 # Activos estáticos públicos (favicons, metadatos)
+sima-colombia/
+├── public/                         # Activos estáticos públicos
+│   ├── favicon.svg                 # Isotipo vectorial del sistema
+│   └── robots.txt                  # Directivas de indexación
+│
 ├── src/
-│   ├── components/
-│   │   ├── EvaluadorAgua.svelte   # Workbench reactivo de evaluación de agua
-│   │   ├── LandingCards.svelte    # Módulos del sistema (Agua, Suelo, Aire, Ruido)
-│   │   ├── ModalAlerta.svelte     # Notificación para módulos futuros
-│   │   ├── ModalLegal.svelte      # Ventana con marco legal y condiciones
-│   │   └── FooterLegal.svelte     # Pie de página institucional y enlaces normativos
-│   ├── data/
-│   │   └── normativaAgua.ts       # Matriz normativa colombiana y reglas de evaluación
-│   ├── layouts/
-│   │   └── Layout.astro           # Plantilla base HTML con tipografía y navegación
-│   ├── pages/
-│   │   ├── index.astro            # Página de bienvenida e introducción general
-│   │   ├── agua.astro             # Interfaz analítica del evaluador de agua
-│   │   └── legal.astro            # Términos, marco regulatorio y exención de responsabilidad
+│   ├── components/                 # Componentes interactivos de UI (Svelte 5)
+│   │   ├── icons/                  # Sistema de iconografía vectorial SVG
+│   │   │   └── Icon.svelte         # Catálogo SVG minimalista (Lucide-inspired)
+│   │   ├── EvaluadorAgua.svelte    # Workbench analítico interactivo con menú desplegable
+│   │   ├── LandingCards.svelte     # Catálogo principal de matrices ambientales
+│   │   ├── ModalAlerta.svelte      # Diálogo accesible para módulos en desarrollo
+│   │   ├── ModalLegal.svelte       # Modal con fundamentación legal y términos
+│   │   └── FooterLegal.svelte      # Pie de página institucional con enlaces normativos
+│   │
+│   ├── data/                       # Capa de dominio y lógica legal
+│   │   └── normativaAgua.ts        # Matriz legal completa y motor evaluarParametro()
+│   │
+│   ├── layouts/                    # Plantillas maestras de Astro (SSG Shell)
+│   │   └── Layout.astro            # Layout base HTML con tipografía y navegación
+│   │
+│   ├── pages/                      # Enrutamiento estático de la aplicación
+│   │   ├── index.astro             # Portada principal del sistema
+│   │   ├── agua.astro              # Analizador especializado de calidad de agua
+│   │   └── legal.astro             # Documento formal de términos, licencias y alcance
+│   │
 │   └── styles/
-│       └── global.css             # Configuración de estilos globales y temas
-├── astro.config.mjs        # Configuración del entorno Astro
-├── LICENSE                 # Licencia MIT con declaración regulatoria colombiana
-├── package.json            # Metadatos del proyecto y dependencias
-├── pnpm-workspace.yaml     # Configuración de workspace pnpm
-├── README.md               # Documentación general del repositorio
-└── tsconfig.json           # Configuración de TypeScript
+│       └── global.css              # Tokens de diseño, Tailwind CSS v4 y animaciones
+│
+├── astro.config.mjs                # Configuración del compilador Astro y Vite
+├── LICENSE                         # Licencia MIT con anexo legal de la República de Colombia
+├── package.json                    # Scripts del proyecto y dependencias de producción
+├── pnpm-workspace.yaml             # Configuración de workspace pnpm
+├── README.md                       # Documentación técnica principal
+└── tsconfig.json                   # Configuración del compilador TypeScript (Strictest)
 ```
 
 ---
 
-## Instalación y Uso Local
+## 💻 Stack Tecnológico
 
-### Requisitos
-
-- **Node.js**: Versión 22 o superior
-- **pnpm**: Versión 9 o superior (`npm install -g pnpm`)
-
-### Pasos de Instalación
-
-1. **Clonar el repositorio:**
-   ```bash
-   git clone https://github.com/tu-usuario/proyecto-ambiental.git
-   cd proyecto-ambiental
-   ```
-
-2. **Instalar dependencias:**
-   ```bash
-   pnpm install
-   ```
-
-3. **Ejecutar el servidor local:**
-   ```bash
-   pnpm dev
-   ```
-
-4. **Abrir en el navegador:**  
-   Ingresa a [http://localhost:4321](http://localhost:4321) para interactuar con la aplicación.
-
-### Scripts Disponibles
-
-- `pnpm dev`: Inicia el entorno local de desarrollo.
-- `pnpm build`: Genera la versión estática optimizada para producción en `dist/`.
-- `pnpm preview`: Permite previsualizar localmente el paquete generado en `dist/`.
+| Tecnología | Versión | Propósito Arquitectónico |
+|:---|:---:|:---|
+| **Astro** | 7.x | Framework generador de sitios estáticos (SSG) e Islands Architecture |
+| **Svelte** | 5.x | Runtime reactivo ultraligero (~3KB) mediante señales (*Runes*) |
+| **Tailwind CSS** | 4.x | Motor de estilos de última generación con variables CSS nativas |
+| **TypeScript** | Strict | Tipado estático de contratos legales, rangos y validadores |
+| **Vite** | 6.x | Empaquetador modular y pipeline de compilación de producción |
+| **pnpm** | 11.x | Gestor determinista de dependencias mediante enlaces duros |
 
 ---
 
-## Marco Legal y Licencia
+## 📐 Matrices Normativas Incorporadas
 
-### Reproducción Normativa
-De acuerdo con el **Artículo 41 de la Ley 23 de 1982** de la República de Colombia:
+El sistema implementa la parametrización oficial de **5 matrices normativas** de la República de Colombia:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                           SIMA COLOMBIA - MATRICES                              │
+└─────────────────────────────────────────────────────────────────────────────────┘
+         │
+         ├── 1. Agua para Consumo Humano (Agua Potable)
+         │      └─ Resolución 2115 de 2007 (MinProtección / MinAmbiente)
+         │         [pH, Turbiedad, Cloro Libre, Color, Conductividad, E. coli...]
+         │
+         ├── 2. Aguas Residuales Domésticas (ARD)
+         │      └─ Resolución 0631 de 2015, Artículo 8 (Efluentes a cuerpos de agua)
+         │         [DBO₅, DQO, Sólidos Suspendidos Totales, Grasas y Aceites, pH]
+         │
+         ├── 3. Aguas Residuales No Domésticas (ARnD)
+         │      └─ Resolución 0631 de 2015, Artículo 10 (Descargas industriales/comerciales)
+         │         [DBO₅, DQO, SST, Hidrocarburos Totales, SAAM, Metales Pesados]
+         │
+         ├── 4. Agua Superficial — Preservación de Flora y Fauna
+         │      └─ Decreto 1076 de 2015 / Dec. 1594 de 1984 (Ecosistemas lénticos y lóticos)
+         │         [Oxígeno Disuelto, pH, Temperatura, Criterios de vida acuática]
+         │
+         └── 5. Agua Superficial — Captación y Consumo Humano
+                └─ Decreto 1076 de 2015, Título 9 (Admisibilidad en bocatomas)
+                   [Criterios de agua cruda previo a desinfección y potabilización]
+```
+
+---
+
+## ⚖️ Lógica de Evaluación y Reglas de Negocio
+
+Cada parámetro ingresado es procesado por la función analítica `evaluarParametro(id, valor)` en tiempo constante $O(1)$:
+
+```
+           Valor Medido (x)
+                  │
+     ┌────────────┴────────────┐
+     ▼                         ▼
+Operador ENTRE          Operador MENOR_IGUAL / CERO
+ (ej: pH 6.5 - 9.0)       (ej: Turbiedad ≤ 2.0 UNT)
+     │                         │
+     ├─ x dentro de rango ──►  ├─ x ≤ 80% del límite ──►  [ CUMPLE ] (Verde)
+     ├─ x al 80% del límite ─► ├─ 80% < x ≤ 100% límite ─► [ ALERTA ] (Ámbar)
+     └─ x fuera de rango ────► └─ x > 100% límite ──────►  [ NO CONFORME ] (Rojo)
+```
+
+| Estado | Significado Técnico | Acción del Sistema |
+|:---|:---|:---|
+| **CUMPLE** | El valor registrado cumple holgadamente con el rango legal. | Borde esmeralda `#10b981`, badge verde y animación sutil de pulso. |
+| **ALERTA PREVENTIVA** | El parámetro se encuentra al 80% o más del límite máximo admisible. | Borde ámbar `#f59e0b`, badge de advertencia e indicador de atención. |
+| **NO CONFORME** | El valor incumple el límite máximo permitido por la norma colombiana. | Borde carmesí `#ef4444`, micro-vibración y citación de infracción legal. |
+
+---
+
+## 📑 Resumen de Parámetros Fisicoquímicos y Microbiológicos
+
+| Parámetro | Unidad | Operador Legal | Rango de Referencia | Matriz Normativa |
+|:---|:---:|:---:|:---:|:---|
+| **Potencial de Hidrógeno (pH)** | Unidades pH | `ENTRE` | 6.5 a 9.0 | Agua Potable / ARD / ARnD |
+| **Turbiedad** | UNT | `MENOR_IGUAL` | ≤ 2.0 | Agua Potable (Res. 2115) |
+| **Cloro Residual Libre** | mg/L | `ENTRE` | 0.3 a 2.0 | Redes de Distribución |
+| **Color Aparente** | UPC | `MENOR_IGUAL` | ≤ 15 | Agua Potable |
+| **Escherichia coli** | UFC/100 mL | `CERO_ESTRICTO` | 0 | Microbiología Potable |
+| **Coliformes Totales** | UFC/100 mL | `CERO_ESTRICTO` | 0 | Microbiología Potable |
+| **DBO₅ (Demanda Bioquímica)** | mg/L | `MENOR_IGUAL` | ≤ 90.0 | ARD Vertimientos (Res. 0631) |
+| **DQO (Demanda Química)** | mg/L | `MENOR_IGUAL` | ≤ 180.0 | ARD Vertimientos (Res. 0631) |
+| **Sólidos Suspendidos Totales (SST)** | mg/L | `MENOR_IGUAL` | ≤ 90.0 | ARD / ARnD |
+| **Grasas y Aceites** | mg/L | `MENOR_IGUAL` | ≤ 20.0 | ARD / ARnD |
+| **Oxígeno Disuelto (OD)** | mg/L | `MAYOR_IGUAL` | ≥ 4.0 | Preservación de Fauna y Flora |
+
+---
+
+## 🛠️ Instalación y Puesta en Marcha
+
+### Prerrequisitos
+- **Node.js**: Versión `>= 22.12.0` (o Node 24.x)
+- **pnpm**: Versión `>= 10.x` (`npm install -g pnpm`)
+
+### 1. Clonar el Repositorio
+```bash
+git clone https://github.com/David-devT/SIMA-.git
+cd SIMA-
+```
+
+### 2. Instalar Dependencias
+```bash
+pnpm install
+```
+
+### 3. Iniciar el Servidor Local de Desarrollo
+```bash
+pnpm dev
+```
+
+La aplicación se desplegará de forma inmediata en:
+```text
+Local:   http://localhost:4321/
+Network: http://<tu-ip-local>:4321/
+```
+
+### 4. Compilar para Producción
+```bash
+pnpm build
+```
+Genera los archivos HTML, CSS y JS 100% estáticos en el directorio `./dist/`.
+
+---
+
+## 📜 Scripts Disponibles
+
+| Comando | Propósito |
+|:---|:---|
+| `pnpm dev` | Inicia el servidor de desarrollo de Astro con recarga en caliente (HMR) |
+| `pnpm build` | Compila y optimiza la versión estática de producción en `./dist/` |
+| `pnpm preview` | Ejecuta un servidor local para inspeccionar el build de producción |
+| `pnpm astro` | Ejecuta comandos directos de la CLI de Astro (`astro preferences`, etc.) |
+
+---
+
+## ⚖️ Marco Regulatorio y Términos Legales
+
+### 1. Libre Reproducción Normativa (Ley 23 de 1982)
+Conforme al **Artículo 41 de la Ley 23 de 1982** de la República de Colombia:
 > *"Es permitido a todos reproducir la Constitución, leyes, decretos, ordenanzas, acuerdos, reglamentos, demás actos administrativos y decisiones judiciales, bajo la obligación de conformarse puntualmente con la edición oficial..."*
 
-Los valores y topes regulatorios implementados en este software corresponden a transcripciones de las normas oficiales de dominio público publicadas en el Diario Oficial de Colombia.
+La parametrización de rangos, límites y artículos de las resoluciones del Ministerio de Ambiente y del Ministerio de Salud son de dominio público y su utilización para este simulador académico respeta fielmente los textos legales oficiales vigentes.
 
-### Validez Oficial y Acreditación
-De conformidad con el **Decreto 1076 de 2015**, los análisis que requieran validez jurídica o probatoria ante autoridades ambientales (como CAR, ANLA, MinAmbiente o Secretarías de Salud) **deben ser expedidos por laboratorios acreditados por el IDEAM bajo la norma NTC-ISO/IEC 17025**. Esta herramienta digital tiene carácter didáctico, orientativo y analítico preliminar.
+### 2. Acreditación de Laboratorios (Decreto 1076 de 2015)
+Los análisis de laboratorio que requieran validez jurídica o probatoria ante autoridades ambientales (CAR, ANLA, MinAmbiente, Secretarías de Salud) **únicamente pueden ser emitidos por laboratorios acreditados por el IDEAM bajo la norma técnica NTC-ISO/IEC 17025**. Esta herramienta digital tiene carácter didáctico, orientativo y analítico preliminar.
 
-### Licencia
-Este proyecto se encuentra publicado bajo la **[Licencia MIT](./LICENSE)**. Puede ser utilizado, modificado y estudiado libremente con fines educativos y de investigación, siempre conservando los créditos de autoría y las declaraciones de exención de responsabilidad correspondientes.
+### 3. Licencia de Software (Open Source)
+Este proyecto se distribuye bajo los términos de la **[Licencia MIT](./LICENSE)**. Se permite el uso, estudio, adaptación y distribución del código sin costo alguno, bajo la condición de conservar los avisos de derechos de autor y la cláusula de exención de responsabilidad (*AS IS*).
+
+---
+
+<div align="center">
+
+Desarrollado con arquitectura moderna en Astro, Svelte 5 y Tailwind CSS para la ingeniería ambiental colombiana.
+
+</div>
