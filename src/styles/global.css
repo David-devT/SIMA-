@@ -8,27 +8,70 @@
  * - Hardware Acceleration: Uso de transform3d y will-change implícito para animaciones fluidas a 60fps.
  */
 
+@import "@fontsource/plus-jakarta-sans";
+@import "@fontsource/jetbrains-mono";
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *, [data-theme="dark"], [data-theme="dark"] *));
+
 @layer base {
-  :root {
-    /* Color Tokens - Minimal Dark Architecture */
-    --color-bg-base: #030712;
-    --color-bg-surface: #070d18;
-    --color-bg-card: #0b1322;
-    --color-border-subtle: rgba(255, 255, 255, 0.06);
-    --color-border-hover: rgba(255, 255, 255, 0.12);
-    --color-accent-emerald: #10b981;
+  :root, .light, [data-theme="light"] {
+    --color-bg-base: #f8fafc;
+    --color-bg-surface: #ffffff;
+    --color-bg-card: #f1f5f9;
+    --color-text-main: #0f172a;
+    --color-text-muted: #475569;
+    --color-border-subtle: #e2e8f0;
+    --color-border-hover: #cbd5e1;
+    --color-accent-emerald: #0d9488;
     --color-accent-blue: #0284c7;
+  }
+
+  :root.dark, .dark, [data-theme="dark"] {
+    --color-bg-base: #0f1419;
+    --color-bg-surface: #171c21;
+    --color-bg-card: #1b2025;
+    --color-text-main: #dee3ea;
+    --color-text-muted: #94a3b8;
+    --color-border-subtle: rgba(255, 255, 255, 0.08);
+    --color-border-hover: rgba(255, 255, 255, 0.16);
+    --color-accent-emerald: #10b981;
+    --color-accent-blue: #38bdf8;
+  }
+
+  /* Alto Contraste Reforzado (WCAG 2.2 AAA Criterio 1.4.6) */
+  :root.high-contrast, .high-contrast {
+    --color-bg-base: #ffffff;
+    --color-bg-surface: #ffffff;
+    --color-bg-card: #f8fafc;
+    --color-text-main: #000000;
+    --color-text-muted: #0f172a;
+    --color-border-subtle: #000000;
+    --color-border-hover: #000000;
+    --color-accent-emerald: #047857;
+    --color-accent-blue: #0369a1;
+  }
+
+  :root.dark.high-contrast, .dark.high-contrast, [data-theme="dark"].high-contrast {
+    --color-bg-base: #000000;
+    --color-bg-surface: #0a0a0a;
+    --color-bg-card: #121212;
+    --color-text-main: #ffffff;
+    --color-text-muted: #e2e8f0;
+    --color-border-subtle: #ffffff;
+    --color-border-hover: #ffffff;
+    --color-accent-emerald: #34d399;
+    --color-accent-blue: #38bdf8;
   }
 
   body {
     background-color: var(--color-bg-base);
-    color: #e2e8f0;
+    color: var(--color-text-main);
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     min-height: 100vh;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    transition: background-color 0.25s ease, color 0.25s ease;
   }
 }
 
@@ -79,22 +122,41 @@
   animation: antigravity-shake-critico 0.4s ease-in-out;
 }
 
-/* Glassmorphism sutil sin saturación de color */
+/* ==========================================================================
+   Accesibilidad: Reducción de Movimiento (WCAG 2.2 AAA)
+   Suprime animaciones y transiciones continuas si el usuario lo solicita.
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Glassmorphism adaptable */
 .glass-panel-subtle {
-  background: rgba(7, 13, 24, 0.85);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid var(--color-border-subtle);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.dark .glass-panel-subtle {
+  background: rgba(15, 20, 25, 0.88);
 }
 
 .card-minimal {
-  background: #090f1d;
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-subtle);
   transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .card-minimal:hover {
-  border-color: rgba(255, 255, 255, 0.15);
+  border-color: var(--color-border-hover);
 }
 
 /* ==========================================================================

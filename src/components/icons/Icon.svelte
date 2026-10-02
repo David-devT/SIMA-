@@ -27,7 +27,16 @@
     | 'shield-check'
     | 'table'
     | 'camera'
-    | 'download';
+    | 'download'
+    | 'sun'
+    | 'moon'
+    | 'contrast'
+    | 'hearing'
+    | 'user'
+    | 'arrow-down'
+    | 'arrow-right'
+    | 'activity'
+    | 'cloud';
 
   interface Props {
     name: IconName | string;
@@ -172,6 +181,46 @@
     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
     <polyline points="7 10 12 15 17 10" />
     <line x1="12" x2="12" y1="15" y2="3" />
+  {:else if name === 'sun'}
+    <!-- Sol / Modo claro -->
+    <circle cx="12" cy="12" r="4"/>
+    <path d="M12 2v2"/>
+    <path d="M12 20v2"/>
+    <path d="m4.93 4.93 1.41 1.41"/>
+    <path d="m17.66 17.66 1.41 1.41"/>
+    <path d="M2 12h2"/>
+    <path d="M20 12h2"/>
+    <path d="m6.34 17.66-1.41 1.41"/>
+    <path d="m19.07 4.93-1.41 1.41"/>
+  {:else if name === 'moon'}
+    <!-- Luna / Modo oscuro -->
+    <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+  {:else if name === 'contrast'}
+    <!-- Alto contraste -->
+    <circle cx="12" cy="12" r="10"/>
+    <path d="M12 2a10 10 0 0 1 0 20Z" fill="currentColor"/>
+  {:else if name === 'hearing'}
+    <!-- Compatibilidad auditiva / Lector -->
+    <path d="M6 8.5a6.5 6.5 0 1 1 13 0c0 6-6 6-6 10"/>
+    <path d="M14 8.5a2.5 2.5 0 0 0-5 0c0 3 3 3 3 5"/>
+  {:else if name === 'user'}
+    <!-- Usuario / Perfil -->
+    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
+    <circle cx="12" cy="7" r="4"/>
+  {:else if name === 'arrow-down'}
+    <!-- Flecha hacia abajo -->
+    <path d="M12 5v14"/>
+    <path d="m19 12-7 7-7-7"/>
+  {:else if name === 'arrow-right'}
+    <!-- Flecha hacia la derecha -->
+    <path d="M5 12h14"/>
+    <path d="m12 5 7 7-7 7"/>
+  {:else if name === 'activity'}
+    <!-- Señal / Telemetría activa -->
+    <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+  {:else if name === 'cloud'}
+    <!-- Nube / Olores -->
+    <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>
   {:else}
     <!-- Fallback neutro -->
     <circle cx="12" cy="12" r="10" />

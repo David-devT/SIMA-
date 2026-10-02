@@ -44,6 +44,14 @@ build/
 # ------------------------------------------------------------------------------
 node_modules/
 .pnpm-store/
+.pnpm-workspace-state*
+.modules.yaml
+.package-map.json
+coverage/
+.nyc_output/
+OPTIMIZATION_*.md
+tests/temp*
+*.local
 
 # ------------------------------------------------------------------------------
 # 5. Variables de Entorno, Claves y Secretos (Seguridad Crítica)
