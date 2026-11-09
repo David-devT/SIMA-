@@ -1,11 +1,13 @@
 /**
  * @file global.css
- * @description Sistema de diseño base y tokens visuales para la plataforma SIMA.
+ * @description Sistema de diseño base y tokens visuales para SIMA Colombia (Stitch Design Framework).
  * 
- * Filosofía de Estilo:
- * - Minimalist Dark Palette: Negro profundo (#030712), Azul técnico (#2563eb/#0284c7) y Verde (#10b981).
- * - Reduced Visual Noise: Eliminación de gradientes estridentes y destellos innecesarios.
- * - Hardware Acceleration: Uso de transform3d y will-change implícito para animaciones fluidas a 60fps.
+ * Filosofía de Estilo Stitch:
+ * - Abyssal Tactical Theme: Deep tactical canvas (#060f18 / #0a141d), Ice Cyan (#82d0f9 / #8ad4f0),
+ *   Slate Wireframe (#1a3344 / #2a4b63), Cerulean (#3a8eb4 / #4ba3cc), Amber (#ffb700) y Crimson (#ff3366).
+ * - Dual-engine Typography: Poppins & Plus Jakarta Sans para narrativa y estructura;
+ *   JetBrains Mono & Space Mono para instrumentación táctica, telemetría y matrices normativas.
+ * - Hardware Acceleration & Technical Precision.
  */
 
 @import "@fontsource/plus-jakarta-sans";
@@ -13,6 +15,92 @@
 @import "tailwindcss";
 
 @custom-variant dark (&:where(.dark, .dark *, [data-theme="dark"], [data-theme="dark"] *));
+
+@theme {
+  --color-tactical-pitch: #060f18;
+  --color-tactical-slate: #0a141d;
+  --color-tactical-surface: #0d1e28;
+  --color-tactical-wireframe: #1a3344;
+  --color-tactical-wirelight: #2a4b63;
+  --color-tactical-wirehighlight: #3a6888;
+  --color-tactical-ice: #8ad4f0;
+  --color-tactical-icebright: #a0e0fa;
+  --color-tactical-cyan: #5da0c2;
+  --color-tactical-cerulean: #3a8eb4;
+  --color-tactical-softcyan: #7ab8d6;
+  --color-tactical-amber: #ffb700;
+  --color-tactical-crimson: #ff3366;
+  --color-tactical-dim: #627d92;
+  --color-tactical-dimmer: #3c5264;
+  --color-tactical-text: #d9e3f1;
+
+  --color-primary: #82d0f9;
+  --color-primary-fixed: #c2e8ff;
+  --color-primary-fixed-dim: #82d0f9;
+  --color-primary-container: #489ac0;
+  --color-on-primary: #003548;
+  --color-on-primary-container: #002e3f;
+
+  --color-secondary: #a0cced;
+  --color-secondary-fixed: #c8e6ff;
+  --color-secondary-fixed-dim: #a0cced;
+  --color-secondary-container: #1e4d69;
+  --color-on-secondary: #00344d;
+  --color-on-secondary-container: #92bede;
+
+  --color-tertiary: #a9cbe3;
+  --color-tertiary-fixed: #c6e7ff;
+  --color-tertiary-fixed-dim: #a9cbe3;
+  --color-tertiary-container: #7495ab;
+  --color-on-tertiary: #0e3447;
+  --color-on-tertiary-container: #052d40;
+
+  --color-surface: #0a141d;
+  --color-surface-dim: #0a141d;
+  --color-surface-bright: #303a44;
+  --color-surface-container-lowest: #060f18;
+  --color-surface-container-low: #131c26;
+  --color-surface-container: #17212a;
+  --color-surface-container-high: #212b35;
+  --color-surface-container-highest: #2c3640;
+  --color-surface-variant: #2c3640;
+  --color-surface-tint: #82d0f9;
+  --color-on-surface: #d9e3f1;
+  --color-on-surface-variant: #bfc8ce;
+  --color-outline: #899298;
+  --color-outline-variant: #3f484e;
+  --color-background: #0a141d;
+  --color-on-background: #d9e3f1;
+  --color-error: #ffb4ab;
+  --color-error-container: #93000a;
+  --color-on-error: #690005;
+  --color-on-error-container: #ffdad6;
+  --color-warning: #ffb74d;
+
+  --font-mono: 'JetBrains Mono', 'Space Mono', ui-monospace, monospace;
+  --font-sans: 'Poppins', 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-headline-xl: 'Poppins', 'JetBrains Mono', sans-serif;
+  --font-headline-lg: 'Poppins', 'JetBrains Mono', sans-serif;
+  --font-headline-sm: 'Poppins', 'JetBrains Mono', sans-serif;
+  --font-body-lg: 'Poppins', 'JetBrains Mono', sans-serif;
+  --font-body-md: 'Poppins', 'JetBrains Mono', sans-serif;
+  --font-body-sm: 'Poppins', 'JetBrains Mono', sans-serif;
+  --font-label-md: 'JetBrains Mono', 'Space Mono', monospace;
+  --font-label-sm: 'JetBrains Mono', 'Space Mono', monospace;
+  --font-code-cli: 'JetBrains Mono', monospace;
+  --font-display: 'JetBrains Mono', monospace;
+  --font-telemetry-num: 'JetBrains Mono', monospace;
+
+  --spacing-space-xs: 0.125rem;
+  --spacing-space-sm: 0.25rem;
+  --spacing-space-md: 0.5rem;
+  --spacing-space-lg: 0.75rem;
+  --spacing-space-xl: 1rem;
+  --spacing-gutter: 0.5rem;
+  --spacing-margin: 0.75rem;
+  --spacing-margin-desktop: 1rem;
+  --spacing-gutter-desktop: 0.75rem;
+}
 
 @layer base {
   :root, .light, [data-theme="light"] {
@@ -29,14 +117,14 @@
 
   :root.dark, .dark, [data-theme="dark"] {
     --color-bg-base: #0f1419;
-    --color-bg-surface: #171c21;
-    --color-bg-card: #1b2025;
-    --color-text-main: #dee3ea;
-    --color-text-muted: #94a3b8;
-    --color-border-subtle: rgba(255, 255, 255, 0.08);
-    --color-border-hover: rgba(255, 255, 255, 0.16);
-    --color-accent-emerald: #10b981;
-    --color-accent-blue: #38bdf8;
+    --color-bg-surface: #0a141d;
+    --color-bg-card: #131c26;
+    --color-text-main: #d9e3f1;
+    --color-text-muted: #8aa3b5;
+    --color-border-subtle: #25445a;
+    --color-border-hover: #355e7d;
+    --color-accent-emerald: #82d0f9;
+    --color-accent-blue: #5da0c2;
   }
 
   /* Alto Contraste Reforzado (WCAG 2.2 AAA Criterio 1.4.6) */
@@ -67,65 +155,43 @@
   body {
     background-color: var(--color-bg-base);
     color: var(--color-text-main);
-    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'Poppins', 'Plus Jakarta Sans', system-ui, sans-serif;
     min-height: 100vh;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    transition: background-color 0.25s ease, color 0.25s ease;
   }
 }
 
 /* ==========================================================================
-   Antigravity Animation Presets (Minimalist Precision Glows)
+   Stitch Tactical Animations & Precision HUD Effects
    ========================================================================== */
 
-@keyframes antigravity-pulse-green {
+@keyframes pulse-led {
   0%, 100% {
-    box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.4), 0 0 10px rgba(16, 185, 129, 0.15);
+    opacity: 1;
+    filter: drop-shadow(0 0 6px #8ad4f0);
   }
   50% {
-    box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.8), 0 0 16px rgba(16, 185, 129, 0.25);
+    opacity: 0.35;
+    filter: drop-shadow(0 0 1px #8ad4f0);
   }
 }
 
-@keyframes antigravity-warning-glow {
-  0%, 100% {
-    box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.4), 0 0 10px rgba(245, 158, 11, 0.15);
-  }
-  50% {
-    box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.8), 0 0 16px rgba(245, 158, 11, 0.25);
-  }
+.led-live {
+  animation: pulse-led 1.8s infinite ease-in-out;
 }
 
-@keyframes antigravity-shake-critico {
-  0%, 100% {
-    transform: translateX(0);
-    box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.6), 0 0 14px rgba(239, 68, 68, 0.25);
-  }
-  25% {
-    transform: translateX(-3px);
-  }
-  75% {
-    transform: translateX(3px);
-  }
+/* Tactical Background Grid Pattern */
+.tactical-grid-bg {
+  background-color: #060f18;
+  background-image: 
+    radial-gradient(#1a3344 1px, transparent 1px),
+    linear-gradient(to right, rgba(26, 51, 68, 0.25) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(26, 51, 68, 0.25) 1px, transparent 1px);
+  background-size: 16px 16px, 16px 16px, 16px 16px;
 }
 
-.antigravity-pulse-green {
-  animation: antigravity-pulse-green 3s infinite ease-in-out;
-}
-
-.antigravity-warning-glow {
-  animation: antigravity-warning-glow 2s infinite ease-in-out;
-}
-
-.antigravity-shake-critico {
-  animation: antigravity-shake-critico 0.4s ease-in-out;
-}
-
-/* ==========================================================================
-   Accesibilidad: Reducción de Movimiento (WCAG 2.2 AAA)
-   Suprime animaciones y transiciones continuas si el usuario lo solicita.
-   ========================================================================== */
+/* Reducción de Movimiento (WCAG 2.2 AAA) */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -137,38 +203,34 @@
   }
 }
 
-/* Glassmorphism adaptable */
-.glass-panel-subtle {
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--color-border-subtle);
+/* Focus Visible Quirks */
+*:focus-visible {
+  outline: 1px solid #7ab8d6 !important;
+  outline-offset: 1px !important;
 }
 
-.dark .glass-panel-subtle {
-  background: rgba(15, 20, 25, 0.88);
+/* Technical Slim Scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: #060f18;
+}
+::-webkit-scrollbar-thumb {
+  background: #2a4b63;
+  border-radius: 0px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #5da0c2;
 }
 
-.card-minimal {
-  background: var(--color-bg-surface);
-  border: 1px solid var(--color-border-subtle);
-  transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.card-minimal:hover {
-  border-color: var(--color-border-hover);
-}
-
-/* ==========================================================================
-   Form Controls: Suprime spinners nativos de HTML5 para evitar solapamiento
-   con badges de unidades y permitir controles de flechas estilizados.
-   ========================================================================== */
+/* Suprime spinners nativos en inputs numéricos */
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
-
 input[type="number"] {
   -moz-appearance: textfield;
   appearance: textfield;

@@ -1,20 +1,10 @@
 <!--
   @file EvaluadorAgua.svelte
-  @description Módulo interactivo de análisis y evaluación en tiempo real de calidad de agua.
-  
-  Arquitectura & Decisiones de Ingeniería:
-  - Svelte 5 Runes ($state, $derived): Reemplazo de reactividad basada en Virtual DOM por señales
-    directas (signals/fine-grained reactivity). Cero overhead de diffing al actualizar mediciones.
-  - Baseline Preset Isolation (UX Optimization): Al cargar o conmutar una norma legal, se activan
-    exclusivamente 5 o 6 parámetros fundamentales (e.g. pH, Turbiedad, Cloro libre, E. coli),
-    minimizando el ruido cognitivo. Los parámetros restantes permanecen desmarcados en el sidebar.
-  - O(1) Lookup Strategy: Uso de estructuras planas Record<string, boolean> y Record<string, number>
-    para indexación directa de valores sin escaneos secuenciales de arrays.
-  - SSR Hydration Safety: Inicialización unificada de estado para garantizar consistencia entre
-    el pre-render de servidor (SSR) y la hidratación en cliente sin layout shifts (FOUC).
-  - Minimalist Palette: Negro puro (#030712), Azul técnico (#0284c7) y Verde esmeralda (#10b981).
+  @description Módulo interactivo de análisis y telemetría de calidad de agua (SIMA Water Telemetry CLI / Tactical Rack).
+  Diseñado fielmente según el diseño Stitch (SIMA_COLOMBIA // SYS_QC [ONLINE]).
 -->
 <script lang="ts">
+  import { onMount } from 'svelte';
   import {
     type TipoNorma,
     type DefinicionParametro,
@@ -25,9 +15,7 @@
     evaluarParametro,
     obtenerParametrosPorTipo
   } from '../data/normativaAgua';
-  import Icon from './icons/Icon.svelte';
 
-  // Colección inmutable de tipos de norma según orden normativo
   const TIPOS_NORMAS: TipoNorma[] = [
     'AGUA_POTABLE',
     'AGUA_RESIDUAL_DOMESTICA',
@@ -36,10 +24,16 @@
     'AGUA_SUPERFICIAL_CONSUMO'
   ];
 
-  /**
-   * Factory function para inicialización de estado determinista (SSR & Client Safe).
-   * Activa ÚNICAMENTE los 5 o 6 parámetros base (PARAMETROS_BASELINE_DEFAULT).
-   */
+  // Identificadores de canal hardware para los 6 canales baseline de agua potable
+  const CHANNEL_CODES: Record<string, { ch: string; code: string; unitTag: string; note: string }> = {
+    'AP_PH': { ch: 'CH_01', code: 'AP_PH.SYS', unitTag: '[UP]', note: 'SIGMA: ±0.01' },
+    'AP_TURBIEDAD': { ch: 'CH_02', code: 'AP_TURB.SYS', unitTag: '[UNT]', note: 'NEPHELOMETRY: OPT_0' },
+    'AP_COLOR': { ch: 'CH_03', code: 'AP_COLOR.SYS', unitTag: '[UPC]', note: 'ESCALA PLATINO-COBALTO' },
+    'AP_CONDUCTIVIDAD': { ch: 'CH_04', code: 'AP_COND.SYS', unitTag: '[µS/cm]', note: 'COMPENSADO @ 25°C' },
+    'AP_CLORO_LIBRE': { ch: 'CH_05', code: 'AP_CLORO.SYS', unitTag: '[mg/L]', note: 'CLORO LIBRE RESIDUAL DPD-1' },
+    'AP_E_COLI': { ch: 'CH_06', code: 'AP_E_COLI.SYS', unitTag: '[UFC/100 mL]', note: 'FILTRACIÓN POR MEMBRANA' },
+  };
+
   function generarEstadoInicial(tipo: TipoNorma) {
     const paramsDisponibles = obtenerParametrosPorTipo(tipo);
     const baselineIds = new Set(PARAMETROS_BASELINE_DEFAULT[tipo] || []);
@@ -47,18 +41,23 @@
     const valores: Record<string, number> = {};
 
     paramsDisponibles.forEach(param => {
-      // Activa ÚNICAMENTE los parámetros que pertenezcan al baseline reglamentario
       const esBaseline = baselineIds.has(param.id);
       seleccionados[param.id] = esBaseline;
 
-      // Asigna valor representativo dentro de rango para feedback inmediato
-      if (param.rango.operador === 'ENTRE' && param.rango.min !== undefined && param.rango.max !== undefined) {
+      // Valores nominales de referencia idénticos a la maqueta Stitch
+      if (param.id === 'AP_PH') valores[param.id] = 7.75;
+      else if (param.id === 'AP_TURBIEDAD') valores[param.id] = 1.0;
+      else if (param.id === 'AP_COLOR') valores[param.id] = 7.5;
+      else if (param.id === 'AP_CONDUCTIVIDAD') valores[param.id] = 500;
+      else if (param.id === 'AP_CLORO_LIBRE') valores[param.id] = 1.20;
+      else if (param.id === 'AP_E_COLI') valores[param.id] = 0;
+      else if (param.rango.operador === 'ENTRE' && param.rango.min !== undefined && param.rango.max !== undefined) {
         valores[param.id] = Number(((param.rango.min + param.rango.max) / 2).toFixed(2));
       } else if (param.rango.operador === 'MENOR_IGUAL' && param.rango.max !== undefined) {
         valores[param.id] = Number((param.rango.max * 0.5).toFixed(2));
       } else if (param.rango.operador === 'MAYOR_IGUAL' && param.rango.min !== undefined) {
         valores[param.id] = Number((param.rango.min * 1.3).toFixed(2));
-      } else if (param.rango.operador === 'CERO_ESTRICTO') {
+      } else {
         valores[param.id] = 0;
       }
     });
@@ -66,228 +65,101 @@
     return { seleccionados, valores };
   }
 
-  // Estado inicial congelado para primer ciclo de render
   const estadoInicial = generarEstadoInicial('AGUA_POTABLE');
 
-  // ==========================================================================
-  // Svelte 5 Runes - Estado Reactivo Primario
-  // ==========================================================================
+  // Estado reactivo Svelte 5 Runes
   let tipoSeleccionado = $state<TipoNorma>('AGUA_POTABLE');
-  let categoriaFiltro = $state<string>('TODAS');
+  let categoriaFiltro = $state<string>('ALL_ANALYTICAL_DOMAINS');
   let busquedaQuery = $state<string>('');
-  let sidebarAbiertoMobile = $state<boolean>(false);
-  let menuNormasAbierto = $state<boolean>(false);
-  let vistaDerecha = $state<'TODOS' | 'TARJETAS' | 'TABLA'>('TODOS');
-  let exportandoImagen = $state<boolean>(false);
-  let mensajeExportacion = $state<string | null>(null);
+  let vistaModo = $state<'RACK' | 'RAW' | 'LOG_TABLE'>('RACK');
+  let pestanaMovil = $state<'RACK' | 'SWITCHBOARD' | 'LOGS'>('RACK');
+  let mensajeTerminal = $state<string>('STREAM_IDLE');
 
-  // Diccionario reactivo de selección on/off por ID de parámetro
   let seleccionados = $state<Record<string, boolean>>(estadoInicial.seleccionados);
-
-  // Registro de valores cuantitativos ingresados por el usuario
   let valoresIngresados = $state<Record<string, number>>(estadoInicial.valores);
+  let utcClock = $state<string>('2026-03-30T14:22:09Z');
 
-  // ==========================================================================
-  // Derivaciones Reactivas ($derived) - Memoized Selectors
-  // ==========================================================================
-  
-  // Lista total de parámetros que aplican a la norma activa
+  onMount(() => {
+    const updateTime = () => {
+      utcClock = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
+    };
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  });
+
+  // Parámetros disponibles según norma activa
   let parametrosDisponibles = $derived(obtenerParametrosPorTipo(tipoSeleccionado));
-
-  // Metadatos institucionales de la norma activa
   let normaActiva = $derived(INFORMACION_NORMAS_AGUA[tipoSeleccionado]);
 
-  // Total de parámetros activos seleccionados por el usuario
-  let cantidadSeleccionados = $derived(
-    parametrosDisponibles.filter(p => seleccionados[p.id]).length
-  );
+  // Filtrado de parámetros para el Diagnostic Switchboard
+  let parametrosFiltrados = $derived(parametrosDisponibles.filter(p => {
+    let cumpleCategoria = true;
+    if (categoriaFiltro === 'DOMAIN_01: FISICOQUIMICOS_BASICOS') cumpleCategoria = p.categoria === 'FISICOQUIMICO';
+    else if (categoriaFiltro === 'DOMAIN_02: MICROBIOLOGICOS_PATOGENOS') cumpleCategoria = p.categoria === 'MICROBIOLOGICO';
+    else if (categoriaFiltro === 'DOMAIN_03: METALES_PESADOS') cumpleCategoria = p.categoria === 'INORGANICO_METALES';
+    else if (categoriaFiltro === 'DOMAIN_04: COMPUESTOS_ORGANICOS') cumpleCategoria = p.categoria === 'ORGANICO';
 
-  // Categorías únicas presentes en la norma activa para el dropdown selector
-  let categoriasDisponibles = $derived([
-    'TODAS',
-    ...Array.from(new Set(parametrosDisponibles.map(p => p.categoria)))
-  ]);
+    const matchTexto = busquedaQuery.trim() === '' || 
+      p.nombre.toLowerCase().includes(busquedaQuery.toLowerCase()) || 
+      p.id.toLowerCase().includes(busquedaQuery.toLowerCase());
 
-  // Parámetros visibles en el lateral izquierdo según categoría y búsqueda
-  let parametrosSidebar = $derived(
-    parametrosDisponibles.filter(param => {
-      const matchCat = categoriaFiltro === 'TODAS' || param.categoria === categoriaFiltro;
-      const matchText = busquedaQuery.trim() === '' || 
-        param.nombre.toLowerCase().includes(busquedaQuery.toLowerCase()) ||
-        param.id.toLowerCase().includes(busquedaQuery.toLowerCase());
-      return matchCat && matchText;
-    })
-  );
+    return cumpleCategoria && matchTexto;
+  }));
 
-  // Subconjunto de parámetros seleccionados que se renderizan en el panel central
-  let parametrosActivosCentral = $derived(
-    parametrosDisponibles.filter(param => seleccionados[param.id])
-  );
+  // Parámetros actualmente activos en el Rack
+  let parametrosActivos = $derived(parametrosDisponibles.filter(p => seleccionados[p.id]));
 
-  // Pipeline de evaluación matemática en tiempo real para los parámetros activos
-  let evaluaciones = $derived<Record<string, ResultadoEvaluacion | null>>((() => {
-    const mapa: Record<string, ResultadoEvaluacion | null> = {};
-    for (const param of parametrosActivosCentral) {
-      const valor = valoresIngresados[param.id];
-      if (valor !== undefined && !isNaN(valor)) {
-        try {
-          mapa[param.id] = evaluarParametro(param.id, valor);
-        } catch {
-          mapa[param.id] = null;
-        }
-      } else {
-        mapa[param.id] = null;
+  // Evaluaciones de los parámetros activos
+  let resultadosActivos = $derived(parametrosActivos.map(p => {
+    const valor = valoresIngresados[p.id] ?? 0;
+    const evaluacion = evaluarParametro(p.id, valor);
+    return { parametro: p, valor, evaluacion };
+  }));
+
+  // Contadores de conformidad
+  let totalActivos = $derived(parametrosActivos.length);
+  let countOk = $derived(resultadosActivos.filter(r => r.evaluacion.estado === 'CUMPLE').length);
+  let countWarn = $derived(resultadosActivos.filter(r => r.evaluacion.estado === 'ALERTA_PREVENTIVA').length);
+  let countFail = $derived(resultadosActivos.filter(r => r.evaluacion.estado === 'NO_CUMPLE').length);
+
+  // Cálculo de IRCA estimado
+  let ircaEstimado = $derived((() => {
+    if (tipoSeleccionado !== 'AGUA_POTABLE' || totalActivos === 0) return 0.0;
+    // Ponderación oficial Res. 2115: E. coli = 25, Cloro = 15, Turbiedad = 15, pH = 1.5, Color = 6, Conductividad = 7.3
+    const pesos: Record<string, number> = {
+      'AP_E_COLI': 25,
+      'AP_CLORO_LIBRE': 15,
+      'AP_TURBIEDAD': 15,
+      'AP_COLOR': 6,
+      'AP_CONDUCTIVIDAD': 7.3,
+      'AP_PH': 1.5
+    };
+    let riesgoAsignado = 0;
+    let puntajeTotal = 0;
+    resultadosActivos.forEach(r => {
+      const p = pesos[r.parametro.id] ?? 5;
+      puntajeTotal += p;
+      if (r.evaluacion.estado === 'NO_CUMPLE') {
+        riesgoAsignado += p;
+      } else if (r.evaluacion.estado === 'ALERTA_PREVENTIVA') {
+        riesgoAsignado += (p * 0.2);
       }
-    }
-    return mapa;
+    });
+    if (puntajeTotal === 0) return 0.0;
+    return Number(((riesgoAsignado / puntajeTotal) * 100).toFixed(1));
   })());
 
-  // Métricas agregadas de conformidad para el status bar
-  let metricas = $derived((() => {
-    let total = parametrosActivosCentral.length;
-    let conformes = 0;
-    let alertas = 0;
-    let noConformes = 0;
+  let ircaTexto = $derived(
+    ircaEstimado === 0 ? '[SIN RIESGO]' : 
+    ircaEstimado <= 5 ? '[RIESGO BAJO]' : 
+    ircaEstimado <= 14 ? '[RIESGO MEDIO]' : 
+    ircaEstimado <= 35 ? '[RIESGO ALTO]' : '[INVIABLE SANITARIAMENTE]'
+  );
 
-    for (const p of parametrosActivosCentral) {
-      const evalRes = evaluaciones[p.id];
-      if (evalRes) {
-        if (evalRes.estado === 'CUMPLE') conformes++;
-        else if (evalRes.estado === 'ALERTA_PREVENTIVA') alertas++;
-        else if (evalRes.estado === 'NO_CUMPLE') noConformes++;
-      }
-    }
+  let segmentGaugePercent = $derived(totalActivos > 0 ? Math.round((countOk / totalActivos) * 100) : 100);
 
-    const porcentaje = total > 0 ? Math.round(((conformes + alertas * 0.5) / total) * 100) : 0;
-    return { total, conformes, alertas, noConformes, porcentaje };
-  })());
-
-  // ==========================================================================
-  // Acciones e Interacciones de Usuario (Action Handlers)
-  // ==========================================================================
-
-  /**
-   * Conmuta la norma técnica activa y reinicia la selección a los 5 o 6 parámetros baseline
-   */
-  function cambiarNorma(tipo: TipoNorma): void {
-    tipoSeleccionado = tipo;
-    const nuevo = generarEstadoInicial(tipo);
-    seleccionados = nuevo.seleccionados;
-    valoresIngresados = nuevo.valores;
-    categoriaFiltro = 'TODAS';
-    busquedaQuery = '';
-  }
-
-  /**
-   * Conmuta el estado de selección individual de un parámetro
-   */
-  function alternarParametro(id: string): void {
-    seleccionados[id] = !seleccionados[id];
-  }
-
-  /**
-   * Restablece la selección exclusivamente a los 5 o 6 parámetros baseline
-   */
-  function restablecerABasicos(): void {
-    const baselineIds = new Set(PARAMETROS_BASELINE_DEFAULT[tipoSeleccionado] || []);
-    const nuevo: Record<string, boolean> = {};
-    for (const p of parametrosDisponibles) {
-      nuevo[p.id] = baselineIds.has(p.id);
-    }
-    seleccionados = nuevo;
-  }
-
-  /**
-   * Activa todos los parámetros de la matriz
-   */
-  function seleccionarTodos(): void {
-    const nuevo: Record<string, boolean> = {};
-    for (const p of parametrosDisponibles) {
-      nuevo[p.id] = true;
-    }
-    seleccionados = nuevo;
-  }
-
-  /**
-   * Desactiva todos los parámetros
-   */
-  function deseleccionarTodos(): void {
-    const nuevo: Record<string, boolean> = {};
-    for (const p of parametrosDisponibles) {
-      nuevo[p.id] = false;
-    }
-    seleccionados = nuevo;
-  }
-
-  /**
-   * Simulación: valores óptimos que cumplen la norma
-   */
-  function simularCumplimiento(): void {
-    const nuevos = { ...valoresIngresados };
-    parametrosDisponibles.forEach(p => {
-      if (p.rango.operador === 'ENTRE' && p.rango.min !== undefined && p.rango.max !== undefined) {
-        nuevos[p.id] = Number(((p.rango.min + p.rango.max) / 2).toFixed(2));
-      } else if (p.rango.operador === 'MENOR_IGUAL' && p.rango.max !== undefined) {
-        nuevos[p.id] = Number((p.rango.max * 0.4).toFixed(2));
-      } else if (p.rango.operador === 'MAYOR_IGUAL' && p.rango.min !== undefined) {
-        nuevos[p.id] = Number((p.rango.min * 1.25).toFixed(2));
-      } else if (p.rango.operador === 'CERO_ESTRICTO') {
-        nuevos[p.id] = 0;
-      }
-    });
-    valoresIngresados = nuevos;
-  }
-
-  /**
-   * Simulación: valores en umbral de alerta preventiva
-   */
-  function simularAlerta(): void {
-    const nuevos = { ...valoresIngresados };
-    parametrosDisponibles.forEach(p => {
-      if (p.rango.operador === 'ENTRE' && p.rango.max !== undefined) {
-        nuevos[p.id] = Number((p.rango.max * 0.95).toFixed(2));
-      } else if (p.rango.operador === 'MENOR_IGUAL' && p.rango.max !== undefined) {
-        nuevos[p.id] = Number((p.rango.max * 0.9).toFixed(2));
-      } else if (p.rango.operador === 'MAYOR_IGUAL' && p.rango.min !== undefined) {
-        nuevos[p.id] = Number((p.rango.min * 1.05).toFixed(2));
-      }
-    });
-    valoresIngresados = nuevos;
-  }
-
-  /**
-   * Simulación: valores que incumplen la norma
-   */
-  function simularIncumplimiento(): void {
-    const nuevos = { ...valoresIngresados };
-    parametrosDisponibles.forEach(p => {
-      if (p.rango.operador === 'ENTRE' && p.rango.max !== undefined) {
-        nuevos[p.id] = Number((p.rango.max * 1.35).toFixed(2));
-      } else if (p.rango.operador === 'MENOR_IGUAL' && p.rango.max !== undefined) {
-        nuevos[p.id] = Number((p.rango.max * 1.5).toFixed(2));
-      } else if (p.rango.operador === 'MAYOR_IGUAL' && p.rango.min !== undefined) {
-        nuevos[p.id] = Number((p.rango.min * 0.5).toFixed(2));
-      } else if (p.rango.operador === 'CERO_ESTRICTO') {
-        nuevos[p.id] = 15;
-      }
-    });
-    valoresIngresados = nuevos;
-  }
-
-  /**
-   * Formateador de texto legible para el rango legal
-   */
-  function formatoRango(p: DefinicionParametro): string {
-    const { operador, min, max, unidad } = p.rango;
-    if (operador === 'ENTRE') return `${min} a ${max} ${unidad}`;
-    if (operador === 'MENOR_IGUAL') return `≤ ${max} ${unidad}`;
-    if (operador === 'MAYOR_IGUAL') return `≥ ${min} ${unidad}`;
-    return `0 ${unidad}`;
-  }
-
-  /**
-   * Determina el delta de incremento (step) proporcional a la escala analítica del parámetro
-   */
+  // Stepper helpers con protección contra floating point drift
   function determinarStep(param: DefinicionParametro): number {
     if (param.categoria === 'MICROBIOLOGICO') return 1;
     const max = param.rango.max ?? param.rango.min ?? 10;
@@ -299,1085 +171,697 @@
     return 1;
   }
 
-  /**
-   * Incrementa el valor cuantitativo con precisión aritmética controlada (evita floating-point drift)
-   */
-  function incrementarValor(param: DefinicionParametro): void {
+  function ajustarValor(paramId: string, direccion: 1 | -1) {
+    const param = parametrosDisponibles.find(p => p.id === paramId);
+    if (!param) return;
     const step = determinarStep(param);
-    const actual = Number(valoresIngresados[param.id] ?? 0);
     const precision = step < 0.01 ? 4 : step < 0.1 ? 3 : step < 1 ? 2 : 1;
-    valoresIngresados[param.id] = Number((actual + step).toFixed(precision));
+    const actual = valoresIngresados[paramId] ?? 0;
+    let nuevo = direccion === 1 ? actual + step : Math.max(0, actual - step);
+    valoresIngresados[paramId] = Number(nuevo.toFixed(precision));
   }
 
-  /**
-   * Decrementa el valor cuantitativo con límite inferior en cero
-   */
-  function decrementarValor(param: DefinicionParametro): void {
-    const step = determinarStep(param);
-    const actual = Number(valoresIngresados[param.id] ?? 0);
-    const precision = step < 0.01 ? 4 : step < 0.1 ? 3 : step < 1 ? 2 : 1;
-    const nuevo = Math.max(0, actual - step);
-    valoresIngresados[param.id] = Number(nuevo.toFixed(precision));
-  }
-
-  /**
-   * Dibuja un rectángulo con esquinas redondeadas en Canvas 2D
-   */
-  function roundRect(
-    ctx: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    w: number,
-    h: number,
-    r: number,
-    fill: boolean,
-    stroke: boolean
-  ): void {
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.lineTo(x + w - r, y);
-    ctx.arcTo(x + w, y, x + w, y + r, r);
-    ctx.lineTo(x + w, y + h - r);
-    ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
-    ctx.lineTo(x + r, y + h);
-    ctx.arcTo(x, y + h, x, y + h - r, r);
-    ctx.lineTo(x, y + r);
-    ctx.arcTo(x, y, x + r, y, r);
-    ctx.closePath();
-    if (fill) ctx.fill();
-    if (stroke) ctx.stroke();
-  }
-
-  /**
-   * Trunca un texto en Canvas agregando '...' si supera el ancho máximo en píxeles
-   */
-  function truncarTexto(ctx: CanvasRenderingContext2D, texto: string, maxAncho: number): string {
-    if (ctx.measureText(texto).width <= maxAncho) return texto;
-    let actual = texto;
-    while (actual.length > 0 && ctx.measureText(actual + '...').width > maxAncho) {
-      actual = actual.slice(0, -1);
+  function handleInputChange(paramId: string, event: Event) {
+    const input = event.target as HTMLInputElement;
+    const val = parseFloat(input.value);
+    if (!isNaN(val) && val >= 0) {
+      valoresIngresados[paramId] = val;
     }
-    return actual + '...';
   }
 
-  /**
-   * Genera un informe gráfico en alta resolución (PNG) mediante HTML5 Canvas 2D
-   * con metadatos oficiales de SIMA Colombia, métricas de conformidad y tabla analítica completa.
-   */
-  async function exportarReporteComoImagen(): Promise<void> {
-    if (parametrosActivosCentral.length === 0) return;
-    exportandoImagen = true;
-    mensajeExportacion = null;
+  // Presets de selección
+  function activarDef6() {
+    const baselines = new Set(PARAMETROS_BASELINE_DEFAULT[tipoSeleccionado] || []);
+    parametrosDisponibles.forEach(p => {
+      seleccionados[p.id] = baselines.has(p.id);
+    });
+  }
 
-    try {
-      // Ciclo corto asíncrono para permitir que la UI pinte el estado de carga
-      await new Promise(r => setTimeout(r, 60));
+  function activarTodos() {
+    parametrosDisponibles.forEach(p => {
+      seleccionados[p.id] = true;
+    });
+  }
 
-      const scale = 2; // Renderizado nítido de alta definición (Retina)
-      const canvasWidth = 1180;
-      
-      const headerHeight = 150;
-      const metricsHeight = 65;
-      const tableHeaderHeight = 42;
-      const rowHeight = 44;
-      const footerHeight = 65;
-      const paddingY = 30;
+  function purgarTodos() {
+    parametrosDisponibles.forEach(p => {
+      seleccionados[p.id] = false;
+    });
+  }
 
-      const totalRows = parametrosActivosCentral.length;
-      const canvasHeight = paddingY * 2 + headerHeight + metricsHeight + 20 + tableHeaderHeight + (totalRows * rowHeight) + footerHeight;
+  function cambiarNorma(nuevaNorma: TipoNorma) {
+    tipoSeleccionado = nuevaNorma;
+    const nuevo = generarEstadoInicial(nuevaNorma);
+    seleccionados = nuevo.seleccionados;
+    valoresIngresados = nuevo.valores;
+  }
 
-      const canvas = document.createElement('canvas');
-      canvas.width = canvasWidth * scale;
-      canvas.height = canvasHeight * scale;
+  // Exportación JSON local pura sin fetch (Client-Side Privacy)
+  function exportarJson() {
+    const dump = {
+      header: {
+        host: 'sima-core-v2.4',
+        timestamp: utcClock,
+        norm: normaActiva.norma,
+        matrix: tipoSeleccionado,
+        operator: 'LAB_OP_042',
+        node: 'BOGOTA_D.C.'
+      },
+      telemetry: {
+        irca_score: `${ircaEstimado}%`,
+        status: ircaTexto,
+        channels_active: totalActivos,
+        conformance: { ok: countOk, warn: countWarn, fail: countFail }
+      },
+      channels: resultadosActivos.map(r => ({
+        channel_id: r.parametro.id,
+        name: r.parametro.nombre,
+        value: r.valor,
+        unit: r.parametro.rango.unidad,
+        status: r.evaluacion.estado,
+        in_range: r.evaluacion.cumple,
+        norm_ref: r.parametro.normaLegal
+      }))
+    };
 
-      const ctx = canvas.getContext('2d');
-      if (!ctx) throw new Error('No se pudo inicializar el contexto 2D del Canvas');
+    const blob = new Blob([JSON.stringify(dump, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `SIMA_TELEMETRY_${tipoSeleccionado}_${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    mensajeTerminal = 'LOG_DUMP_EXPORTED';
+    setTimeout(() => mensajeTerminal = 'STREAM_IDLE', 3000);
+  }
 
-      ctx.scale(scale, scale);
+  // Exportación CSV local pura
+  function exportarCsv() {
+    const headers = ['ID_CANAL', 'PARAMETRO', 'VALOR_MEDIDO', 'UNIDAD', 'ESTADO', 'CONFORME', 'NORMA_LEGAL'];
+    const rows = resultadosActivos.map(r => [
+      r.parametro.id,
+      `"${r.parametro.nombre}"`,
+      r.valor,
+      `"${r.parametro.rango.unidad}"`,
+      r.evaluacion.estado,
+      r.evaluacion.cumple ? 'SI' : 'NO',
+      `"${r.parametro.normaLegal}"`
+    ]);
 
-      // Fondo general con gradiente profesional (#040711 -> #070c1a)
-      const bgGradient = ctx.createLinearGradient(0, 0, 0, canvasHeight);
-      bgGradient.addColorStop(0, '#040711');
-      bgGradient.addColorStop(0.5, '#070c1a');
-      bgGradient.addColorStop(1, '#050915');
-      ctx.fillStyle = bgGradient;
-      ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-
-      // Borde exterior técnico
-      ctx.strokeStyle = '#1e293b';
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(10, 10, canvasWidth - 20, canvasHeight - 20);
-
-      // Barra superior decorativa tricolor (Azul técnico a Esmeralda)
-      const barGrad = ctx.createLinearGradient(10, 10, canvasWidth - 10, 10);
-      barGrad.addColorStop(0, '#0284c7');
-      barGrad.addColorStop(0.5, '#06b6d4');
-      barGrad.addColorStop(1, '#10b981');
-      ctx.fillStyle = barGrad;
-      ctx.fillRect(10, 10, canvasWidth - 20, 4);
-
-      let currentY = paddingY + 15;
-
-      // -------------------------------------------------------------
-      // HEADER: Identidad SIMA y Metadatos de la Norma
-      // -------------------------------------------------------------
-      ctx.fillStyle = '#10b981';
-      ctx.font = 'bold 11px ui-monospace, SFMono-Regular, monospace';
-      ctx.fillText('SIMA COLOMBIA • SISTEMA INTEGRADO DE MONITOREO AMBIENTAL', 35, currentY);
-
-      currentY += 26;
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 22px system-ui, -apple-system, sans-serif';
-      ctx.fillText('Reporte Analítico de Calidad de Agua', 35, currentY);
-
-      // Fecha y hora en lateral derecho
-      const ahora = new Date();
-      const fechaTexto = ahora.toLocaleDateString('es-CO', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
-      });
-      ctx.fillStyle = '#94a3b8';
-      ctx.font = '11px ui-monospace, SFMono-Regular, monospace';
-      ctx.textAlign = 'right';
-      ctx.fillText(`Emisión: ${fechaTexto}`, canvasWidth - 35, currentY - 6);
-      ctx.fillText(`Normativa: ${normaActiva.norma}`, canvasWidth - 35, currentY + 12);
-      ctx.textAlign = 'left';
-
-      currentY += 22;
-      ctx.fillStyle = '#38bdf8';
-      ctx.font = '600 13px system-ui, -apple-system, sans-serif';
-      ctx.fillText(`${normaActiva.titulo}`, 35, currentY);
-
-      currentY += 18;
-      ctx.fillStyle = '#64748b';
-      ctx.font = '11px system-ui, -apple-system, sans-serif';
-      ctx.fillText(`${normaActiva.subtitulo} • Evaluación automática en tiempo real`, 35, currentY);
-
-      currentY += 30;
-
-      // -------------------------------------------------------------
-      // BARRA DE MÉTRICAS (KPIs Resumen de Conformidad)
-      // -------------------------------------------------------------
-      const kpis = [
-        { label: 'PARÁMETROS EVALUADOS', val: `${metricas.total}`, color: '#ffffff', bg: '#0d1527', border: '#1e293b' },
-        { label: 'CONFORMES (CUMPLEN)', val: `${metricas.conformes}`, color: '#34d399', bg: '#064e3b30', border: '#05966950' },
-        { label: 'ALERTA PREVENTIVA', val: `${metricas.alertas}`, color: '#fbbf24', bg: '#78350f30', border: '#d9770650' },
-        { label: 'NO CONFORMES (INCUMPLEN)', val: `${metricas.noConformes}`, color: '#f87171', bg: '#88133730', border: '#e11d4850' },
-        { label: 'ÍNDICE DE CONFORMIDAD', val: `${metricas.porcentaje}%`, color: metricas.porcentaje >= 80 ? '#34d399' : metricas.porcentaje >= 50 ? '#fbbf24' : '#f87171', bg: '#0d1527', border: '#1e293b' }
-      ];
-
-      const kpiWidth = (canvasWidth - 70 - (kpis.length - 1) * 10) / kpis.length;
-      let kpiX = 35;
-
-      kpis.forEach(kpi => {
-        ctx.fillStyle = kpi.bg;
-        roundRect(ctx, kpiX, currentY, kpiWidth, 54, 8, true, false);
-        ctx.strokeStyle = kpi.border;
-        ctx.lineWidth = 1;
-        roundRect(ctx, kpiX, currentY, kpiWidth, 54, 8, false, true);
-
-        ctx.fillStyle = kpi.color;
-        ctx.font = 'bold 18px ui-monospace, SFMono-Regular, monospace';
-        ctx.fillText(kpi.val, kpiX + 12, currentY + 26);
-
-        ctx.fillStyle = '#64748b';
-        ctx.font = 'bold 8.5px system-ui, -apple-system, sans-serif';
-        ctx.fillText(kpi.label, kpiX + 12, currentY + 43);
-
-        kpiX += kpiWidth + 10;
-      });
-
-      currentY += 72;
-
-      // -------------------------------------------------------------
-      // TABLA: Encabezados de Columna
-      // -------------------------------------------------------------
-      const colX = {
-        num: 35,
-        param: 75,
-        cat: 340,
-        medido: 480,
-        limite: 620,
-        estado: 780,
-        diag: 920
-      };
-
-      ctx.fillStyle = '#0f172a';
-      roundRect(ctx, 35, currentY, canvasWidth - 70, tableHeaderHeight, 6, true, false);
-      ctx.strokeStyle = '#334155';
-      ctx.lineWidth = 1;
-      roundRect(ctx, 35, currentY, canvasWidth - 70, tableHeaderHeight, 6, false, true);
-
-      ctx.fillStyle = '#94a3b8';
-      ctx.font = 'bold 10px ui-monospace, SFMono-Regular, monospace';
-      ctx.fillText('#', colX.num + 10, currentY + 25);
-      ctx.fillText('PARÁMETRO', colX.param, currentY + 25);
-      ctx.fillText('CATEGORÍA', colX.cat, currentY + 25);
-      ctx.fillText('VALOR MEDIDO', colX.medido, currentY + 25);
-      ctx.fillText('LÍMITE NORMATIVO', colX.limite, currentY + 25);
-      ctx.fillText('ESTADO', colX.estado, currentY + 25);
-      ctx.fillText('DIAGNÓSTICO TÉCNICO', colX.diag, currentY + 25);
-
-      currentY += tableHeaderHeight;
-
-      // -------------------------------------------------------------
-      // FILAS DE LA TABLA
-      // -------------------------------------------------------------
-      parametrosActivosCentral.forEach((param, idx) => {
-        const evalRes = evaluaciones[param.id];
-        const valor = valoresIngresados[param.id];
-        const esPar = idx % 2 === 0;
-
-        ctx.fillStyle = esPar ? '#080e1d' : '#050914';
-        ctx.fillRect(35, currentY, canvasWidth - 70, rowHeight);
-
-        ctx.strokeStyle = '#1e293b50';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(35, currentY + rowHeight);
-        ctx.lineTo(canvasWidth - 35, currentY + rowHeight);
-        ctx.stroke();
-
-        // 1. Índice
-        ctx.fillStyle = '#475569';
-        ctx.font = '10px ui-monospace, SFMono-Regular, monospace';
-        ctx.fillText(String(idx + 1).padStart(2, '0'), colX.num + 10, currentY + 27);
-
-        // 2. Parámetro
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 12px system-ui, -apple-system, sans-serif';
-        const nombreTrunc = truncarTexto(ctx, param.nombre, 245);
-        ctx.fillText(nombreTrunc, colX.param, currentY + 21);
-
-        ctx.fillStyle = '#64748b';
-        ctx.font = '9.5px ui-monospace, SFMono-Regular, monospace';
-        ctx.fillText(`ID: ${param.id}`, colX.param, currentY + 35);
-
-        // 3. Categoría
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = '10px system-ui, -apple-system, sans-serif';
-        ctx.fillText(param.categoria, colX.cat, currentY + 26);
-
-        // 4. Valor Medido
-        ctx.fillStyle = '#38bdf8';
-        ctx.font = 'bold 12px ui-monospace, SFMono-Regular, monospace';
-        const valTexto = valor !== undefined ? `${valor} ${param.rango.unidad}` : 'No medido';
-        ctx.fillText(valTexto, colX.medido, currentY + 26);
-
-        // 5. Límite Legal
-        ctx.fillStyle = '#a7f3d0';
-        ctx.font = '10.5px ui-monospace, SFMono-Regular, monospace';
-        ctx.fillText(formatoRango(param), colX.limite, currentY + 26);
-
-        // 6. Estado (Badge)
-        if (evalRes) {
-          let badgeBg = '#064e3b';
-          let badgeText = '#34d399';
-          let badgeBorder = '#059669';
-          let textoEstado = 'CUMPLE';
-
-          if (evalRes.estado === 'ALERTA_PREVENTIVA') {
-            badgeBg = '#78350f';
-            badgeText = '#fbbf24';
-            badgeBorder = '#d97706';
-            textoEstado = 'ALERTA';
-          } else if (evalRes.estado === 'NO_CUMPLE') {
-            badgeBg = '#881337';
-            badgeText = '#f87171';
-            badgeBorder = '#e11d48';
-            textoEstado = 'NO CUMPLE';
-          }
-
-          ctx.fillStyle = badgeBg;
-          roundRect(ctx, colX.estado, currentY + 11, 105, 22, 11, true, false);
-          ctx.strokeStyle = badgeBorder;
-          ctx.lineWidth = 1;
-          roundRect(ctx, colX.estado, currentY + 11, 105, 22, 11, false, true);
-
-          ctx.fillStyle = badgeText;
-          ctx.font = 'bold 9px ui-monospace, SFMono-Regular, monospace';
-          ctx.textAlign = 'center';
-          ctx.fillText(textoEstado, colX.estado + 52.5, currentY + 25);
-          ctx.textAlign = 'left';
-        }
-
-        // 7. Diagnóstico Técnico
-        ctx.fillStyle = '#cbd5e1';
-        ctx.font = '10px system-ui, -apple-system, sans-serif';
-        const diagTexto = evalRes ? evalRes.diagnostico : 'Pendiente de medición';
-        const diagTrunc = truncarTexto(ctx, diagTexto, 215);
-        ctx.fillText(diagTrunc, colX.diag, currentY + 26);
-
-        currentY += rowHeight;
-      });
-
-      // Borde contenedor de la tabla
-      ctx.strokeStyle = '#334155';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(35, currentY - (totalRows * rowHeight) - tableHeaderHeight, canvasWidth - 70, (totalRows * rowHeight) + tableHeaderHeight);
-
-      currentY += 25;
-
-      // -------------------------------------------------------------
-      // FOOTER: Disclaimer Legal
-      // -------------------------------------------------------------
-      ctx.strokeStyle = '#1e293b';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(35, currentY);
-      ctx.lineTo(canvasWidth - 35, currentY);
-      ctx.stroke();
-
-      currentY += 18;
-      ctx.fillStyle = '#64748b';
-      ctx.font = '9px system-ui, -apple-system, sans-serif';
-      ctx.fillText('Nota Técnica Legal: Evaluación automatizada generada conforme a la normatividad ambiental vigente en Colombia (MADS / MinSalud).', 35, currentY);
-      ctx.fillText('Este reporte computacional no reemplaza un informe oficial emitido y firmado por un laboratorio acreditado por el IDEAM.', 35, currentY + 14);
-
-      ctx.textAlign = 'right';
-      ctx.fillStyle = '#0284c7';
-      ctx.font = 'bold 10px ui-monospace, SFMono-Regular, monospace';
-      ctx.fillText('SIMA COLOMBIA • TECNOLOGÍA AMBIENTAL ABIERTA', canvasWidth - 35, currentY + 6);
-      ctx.textAlign = 'left';
-
-      // -------------------------------------------------------------
-      // DESCARGA AUTOMÁTICA DEL PNG
-      // -------------------------------------------------------------
-      const dataUrl = canvas.toDataURL('image/png');
-      const enlace = document.createElement('a');
-      const timestampFichero = ahora.toISOString().replace(/[:.]/g, '-').slice(0, 19);
-      enlace.download = `SIMA-Reporte-Calidad-Agua-${tipoSeleccionado.toLowerCase()}-${timestampFichero}.png`;
-      enlace.href = dataUrl;
-      document.body.appendChild(enlace);
-      enlace.click();
-      document.body.removeChild(enlace);
-
-      mensajeExportacion = '¡Imagen PNG exportada y descargada exitosamente!';
-      setTimeout(() => {
-        mensajeExportacion = null;
-      }, 4000);
-    } catch (err) {
-      console.error('Error al exportar tabla como imagen:', err);
-      mensajeExportacion = 'Ocurrió un error al generar la imagen.';
-    } finally {
-      exportandoImagen = false;
-    }
+    const csvContent = [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `SIMA_TELEMETRY_${tipoSeleccionado}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    mensajeTerminal = 'CSV_EXPORTED';
+    setTimeout(() => mensajeTerminal = 'STREAM_IDLE', 3000);
   }
 </script>
 
-<div class="space-y-6">
-  <!-- Encabezado y Breadcrumb -->
-  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-white/[0.06] pb-4">
-    <div>
-      <div class="flex items-center gap-2 text-xs font-mono text-slate-500 dark:text-slate-400 mb-1">
-        <a href="/" class="text-teal-600 dark:text-blue-400 hover:underline">Matrices</a>
-        <span>/</span>
-        <span class="text-slate-700 dark:text-slate-300 font-medium">Calidad de Agua</span>
+<div class="bg-tactical-pitch text-tactical-text min-h-screen flex flex-col font-mono selection:bg-tactical-cerulean selection:text-tactical-pitch text-xs antialiased tactical-grid-bg">
+  <!-- 1. Status Bar Superior / Polybar / Linux Status Ribbon -->
+  <header class="border-b border-tactical-wirelight bg-tactical-slate/95 sticky top-0 z-50 select-none backdrop-blur-sm">
+    <div class="border-b border-tactical-wireframe/80 px-3 py-1 flex flex-wrap items-center justify-between text-[10px] text-tactical-dim font-mono tracking-tight bg-tactical-pitch/90">
+      <div class="flex items-center gap-2 flex-wrap">
+        <span class="text-tactical-softcyan font-bold tracking-wider">[HOST: sima-core-v2.4]</span>
+        <span class="text-tactical-wirelight">|</span>
+        <span>[UTC: {utcClock}]</span>
+        <span class="text-tactical-wirelight">|</span>
+        <span>[MEM_BUFFER: <span class="text-tactical-text">412MB</span>/2048MB]</span>
+        <span class="text-tactical-wirelight hidden sm:inline">|</span>
+        <span class="hidden sm:inline">[SYS_LATENCY: <span class="text-tactical-ice">14ms</span>]</span>
+        <span class="text-tactical-wirelight hidden md:inline">|</span>
+        <span class="hidden md:inline text-tactical-amber">[NORM: {normaActiva.norma}]</span>
       </div>
-      <h1 class="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
-        Analizador Normativo de Agua (Colombia)
-      </h1>
-    </div>
 
-    <!-- Acciones de Prueba Rápida con Touch Targets Ergonómicos (min 40px) -->
-    <div class="grid grid-cols-3 sm:flex sm:items-center gap-2 w-full sm:w-auto">
-      <button
-        type="button"
-        onclick={simularCumplimiento}
-        class="min-h-[40px] sm:min-h-[32px] px-2.5 py-2 sm:py-1.5 rounded-lg text-xs font-medium text-emerald-800 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-950/70 border border-emerald-300 dark:border-emerald-500/30 transition cursor-pointer flex items-center justify-center gap-1.5 active:scale-[0.98]"
-        title="Simular escenario de cumplimiento general"
-      >
-        <span class="w-2 h-2 rounded-full bg-emerald-500 dark:bg-emerald-400"></span>
-        <span>Conforme</span>
-      </button>
-      <button
-        type="button"
-        onclick={simularAlerta}
-        class="min-h-[40px] sm:min-h-[32px] px-2.5 py-2 sm:py-1.5 rounded-lg text-xs font-medium text-amber-800 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-950/70 border border-amber-300 dark:border-amber-500/30 transition cursor-pointer flex items-center justify-center gap-1.5 active:scale-[0.98]"
-        title="Simular escenario de alerta preventiva"
-      >
-        <span class="w-2 h-2 rounded-full bg-amber-500 dark:bg-amber-400"></span>
-        <span>Alerta</span>
-      </button>
-      <button
-        type="button"
-        onclick={simularIncumplimiento}
-        class="min-h-[40px] sm:min-h-[32px] px-2.5 py-2 sm:py-1.5 rounded-lg text-xs font-medium text-rose-800 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-950/70 border border-rose-300 dark:border-rose-500/30 transition cursor-pointer flex items-center justify-center gap-1.5 active:scale-[0.98]"
-        title="Simular escenario de incumplimiento normativo"
-      >
-        <span class="w-2 h-2 rounded-full bg-rose-500 dark:bg-rose-400"></span>
-        <span class="truncate">No Conforme</span>
-      </button>
-    </div>
-  </div>
-
-  <!-- BANNER COMPACTO DE LA NORMA ACTIVA CON SELECTOR DESPLEGABLE -->
-  <div class="space-y-3">
-    <div class="p-3.5 sm:p-4 rounded-xl bg-white dark:bg-[#080e1a] border border-slate-200 dark:border-white/[0.08] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
-      <!-- Info de la Norma Actual -->
-      <div class="flex items-start sm:items-center gap-3 min-w-0">
-        <div class="w-9 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-200 dark:border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
-          <Icon name={normaActiva.icono} size={20} />
+      <div class="flex items-center gap-2">
+        <span class="text-tactical-dim hidden lg:inline">[HASH: <span class="text-tactical-dimmer">e8b9...4f10</span>]</span>
+        <span class="text-tactical-wirelight hidden lg:inline">|</span>
+        <div class="flex items-center gap-1.5 px-2 py-0.5 bg-tactical-surface border border-tactical-wirelight text-[10px]">
+          <span class="w-1.5 h-1.5 rounded-none bg-tactical-ice led-live"></span>
+          <span class="text-tactical-ice font-bold tracking-widest">[STATUS: DAEMON_ACTIVE]</span>
         </div>
-        <div class="min-w-0">
-          <div class="flex flex-wrap items-center gap-2">
-            <span class="text-xs font-mono text-emerald-700 dark:text-emerald-400 font-bold uppercase tracking-wide">
-              {normaActiva.norma}
+      </div>
+    </div>
+
+    <!-- Primary Header & Matrix Submodule Selector Tabs -->
+    <div class="max-w-[1720px] mx-auto px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
+      <!-- Identity -->
+      <a href="/" class="flex items-center gap-3 group focus:outline-none">
+        <div class="w-7 h-7 bg-tactical-surface border border-tactical-cerulean/60 flex items-center justify-center text-tactical-ice font-bold text-xs shadow-inner">
+          SIM
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-extrabold tracking-widest text-tactical-softcyan text-sm group-hover:text-tactical-icebright transition-colors">
+              SIMA_COLOMBIA // SYS_QC
             </span>
-            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 dark:bg-zinc-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-white/[0.06]">
-              {(PARAMETROS_BASELINE_DEFAULT[tipoSeleccionado] || []).length} parámetros base
+            <span class="text-[9px] uppercase px-1.5 py-0.2 bg-tactical-surface text-tactical-ice border border-tactical-wirehighlight font-bold">
+              [ONLINE]
             </span>
           </div>
-          <h2 class="text-sm sm:text-base font-bold text-slate-900 dark:text-white tracking-tight truncate mt-0.5">
-            {normaActiva.titulo}
-          </h2>
-          <p class="hidden md:block text-[11px] text-slate-600 dark:text-slate-400 truncate max-w-xl">
-            {normaActiva.descripcion}
-          </p>
+          <p class="text-[10px] text-tactical-dim">Módulo de Contrastación Analítica Fisicoquímica & Bacteriológica</p>
         </div>
-      </div>
+      </a>
 
-      <!-- Acciones: Botón Desplegar Menú de Normas + Status de Conformidad -->
-      <div class="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-white/[0.06]">
-        <!-- Botón para desplegar / ocultar el menú de las 5 normas -->
-        <button
+      <!-- Matrix CLI Submodule Selector Tabs -->
+      <nav aria-label="Selector de matriz de monitoreo" class="flex items-center gap-1 text-[11px] overflow-x-auto">
+        <button 
           type="button"
-          onclick={() => menuNormasAbierto = !menuNormasAbierto}
-          class="min-h-[38px] px-3 py-1.5 rounded-lg text-xs font-mono font-medium text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-white/[0.04] hover:bg-slate-200 dark:hover:bg-white/[0.08] border {menuNormasAbierto ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300' : 'border-slate-200 dark:border-white/10'} transition flex items-center gap-2 cursor-pointer active:scale-[0.98]"
-          aria-expanded={menuNormasAbierto}
+          onclick={() => cambiarNorma('AGUA_POTABLE')}
+          class="px-2.5 py-1 border transition-colors flex items-center gap-1.5 {tipoSeleccionado === 'AGUA_POTABLE' ? 'bg-tactical-surface border-tactical-cerulean text-tactical-softcyan font-bold shadow-sm' : 'bg-tactical-pitch border-tactical-wirelight text-tactical-dim hover:text-tactical-text hover:border-tactical-wirehighlight'}"
         >
-          <Icon name={menuNormasAbierto ? 'x' : 'sliders'} size={14} class={menuNormasAbierto ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'} />
-          <span>{menuNormasAbierto ? 'Cerrar Menú' : 'Desplegar Menú'}</span>
-          <span class="text-xs transition-transform duration-200 {menuNormasAbierto ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}">▾</span>
+          {#if tipoSeleccionado === 'AGUA_POTABLE'}<span class="text-tactical-ice font-mono">&gt;</span>{/if}
+          [/sys/matriz/agua_potable*]
         </button>
 
-        <!-- Conteo de Cumplimiento -->
-        <div class="flex items-center gap-3 bg-slate-50 dark:bg-[#030712] px-3 py-1.5 rounded-lg border border-slate-200 dark:border-white/[0.06] text-xs font-mono">
-          <div>
-            <span class="text-slate-500 dark:text-slate-400 block text-[9px] uppercase tracking-wider">Conformidad</span>
-            <span class="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">{metricas.porcentaje}%</span>
-          </div>
-          <div class="h-5 w-px bg-slate-200 dark:bg-white/10"></div>
-          <div class="flex items-center gap-2 text-[11px]">
-            <span class="text-emerald-600 dark:text-emerald-400 font-bold" title="Cumple">{metricas.conformes} C</span>
-            <span class="text-amber-600 dark:text-amber-400 font-bold" title="Alerta">{metricas.alertas} A</span>
-            <span class="text-rose-600 dark:text-rose-400 font-bold" title="No Cumple">{metricas.noConformes} NC</span>
-          </div>
+        <button 
+          type="button"
+          onclick={() => cambiarNorma('AGUA_RESIDUAL_DOMESTICA')}
+          class="px-2.5 py-1 border transition-colors flex items-center gap-1.5 {tipoSeleccionado === 'AGUA_RESIDUAL_DOMESTICA' ? 'bg-tactical-surface border-tactical-cerulean text-tactical-softcyan font-bold shadow-sm' : 'bg-tactical-pitch border-tactical-wirelight text-tactical-dim hover:text-tactical-text hover:border-tactical-wirehighlight'}"
+        >
+          {#if tipoSeleccionado === 'AGUA_RESIDUAL_DOMESTICA'}<span class="text-tactical-ice font-mono">&gt;</span>{/if}
+          [/sys/matriz/vertimientos]
+        </button>
+
+        <button 
+          type="button"
+          onclick={() => cambiarNorma('AGUA_SUPERFICIAL_PRESERVACION')}
+          class="px-2.5 py-1 border transition-colors flex items-center gap-1.5 hidden sm:flex {tipoSeleccionado === 'AGUA_SUPERFICIAL_PRESERVACION' ? 'bg-tactical-surface border-tactical-cerulean text-tactical-softcyan font-bold shadow-sm' : 'bg-tactical-pitch border-tactical-wirelight text-tactical-dim hover:text-tactical-text hover:border-tactical-wirehighlight'}"
+        >
+          {#if tipoSeleccionado === 'AGUA_SUPERFICIAL_PRESERVACION'}<span class="text-tactical-ice font-mono">&gt;</span>{/if}
+          [/sys/matriz/suelo_edafico]
+        </button>
+      </nav>
+
+      <!-- Lab Operator Credentials -->
+      <div class="flex items-center gap-2 text-[10px]">
+        <div class="px-2 py-1 bg-tactical-pitch border border-tactical-wirelight text-tactical-dim">
+          UID: <span class="text-tactical-softcyan font-bold">LAB_OP_042</span>
+        </div>
+        <div class="px-2 py-1 bg-tactical-surface border border-tactical-wirelight text-tactical-text">
+          NODE: <span class="text-tactical-ice font-bold">BOGOTA_D.C.</span>
         </div>
       </div>
     </div>
+  </header>
 
-    <!-- EL MENÚ DESPLEGABLE CON LAS 5 NORMAS (SOLO VISIBLE CUANDO SE DESPLIEGA) -->
-    {#if menuNormasAbierto}
-      <div class="p-4 rounded-xl bg-white dark:bg-[#060a14] border border-emerald-500/50 shadow-xl space-y-3 transition-all duration-200">
-        <div class="flex items-center justify-between border-b border-slate-100 dark:border-white/[0.06] pb-2">
-          <div class="flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full bg-emerald-500 dark:bg-emerald-400"></span>
-            <span class="text-xs font-mono uppercase tracking-wider text-slate-900 dark:text-white font-bold">
-              Selecciona la Matriz Normativa
+  <!-- 2. Main Content Area -->
+  <main class="flex-1 max-w-[1720px] w-full mx-auto px-4 py-4 space-y-4">
+    <!-- Mission Control Diagnostic Bar -->
+    <section aria-label="Diagnóstico Normativo y Telemetría IRCA" class="bg-tactical-slate border border-tactical-wirelight p-3 relative shadow-md">
+      <!-- Tactical Corner Accents -->
+      <div class="absolute -top-1.5 -left-1.5 text-tactical-cerulean text-[10px] font-bold select-none">+</div>
+      <div class="absolute -top-1.5 -right-1.5 text-tactical-cerulean text-[10px] font-bold select-none">+</div>
+      <div class="absolute -bottom-1.5 -left-1.5 text-tactical-cerulean text-[10px] font-bold select-none">+</div>
+      <div class="absolute -bottom-1.5 -right-1.5 text-tactical-cerulean text-[10px] font-bold select-none">+</div>
+
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+        <!-- Standard Specification Banner -->
+        <div class="space-y-1">
+          <div class="flex flex-wrap items-center gap-2 text-[10px]">
+            <span class="px-1.5 py-0.5 bg-tactical-surface border border-tactical-cerulean/60 text-tactical-softcyan font-bold tracking-wider">
+              [SPEC: {normaActiva.norma.replace(/\s+/g, '_').toUpperCase()}]
+            </span>
+            <span class="text-tactical-dim uppercase font-mono">
+              DECRETO 1575/2007 // MPS-MADS // CONTROL EN RED DE DISTRIBUCIÓN
+            </span>
+            <span class="text-tactical-wirehighlight">::</span>
+            <span class="text-tactical-ice font-bold font-mono">
+              [CHANNELS_ACTIVE: {totalActivos < 10 ? '0' + totalActivos : totalActivos}/{parametrosDisponibles.length}]
             </span>
           </div>
-          <span class="text-[11px] font-mono text-slate-500">
-            Haz clic en una opción para cargar sus parámetros
+
+          <div class="flex items-baseline gap-2 flex-wrap">
+            <h1 class="text-sm font-bold tracking-tight uppercase text-tactical-softcyan">
+              MATRIZ_{tipoSeleccionado} // DISPOSITIVO TELEMETRICO
+            </h1>
+            <span class="text-[10px] text-tactical-dim font-mono">
+              [MUESTRA_ID: SMP-2026-COL-8891]
+            </span>
+          </div>
+        </div>
+
+        <!-- Tactical Global Telemetry Indicators -->
+        <div class="flex flex-wrap items-center gap-3 bg-tactical-pitch border border-tactical-wirelight p-2">
+          <!-- Global Index IRCA -->
+          <div class="pr-3 border-r border-tactical-wireframe">
+            <div class="text-[9px] uppercase tracking-wider text-tactical-dim font-bold">IRCA_ESTIMADO</div>
+            <div class="flex items-baseline gap-1 font-mono">
+              <span class="text-xl font-black text-tactical-ice">{ircaEstimado.toFixed(1)}%</span>
+              <span class="text-[9px] {ircaEstimado === 0 ? 'text-tactical-ice' : ircaEstimado <= 14 ? 'text-tactical-amber' : 'text-tactical-crimson'}">
+                {ircaTexto}
+              </span>
+            </div>
+          </div>
+
+          <!-- Segmented Status Gauge -->
+          <div class="pr-3 border-r border-tactical-wireframe">
+            <div class="text-[9px] uppercase tracking-wider text-tactical-dim font-bold">SEGMENT_BAR</div>
+            <div class="text-[11px] font-mono font-bold text-tactical-ice tracking-tighter">
+              [==========] <span class="text-tactical-text">{segmentGaugePercent}% NOMINAL</span>
+            </div>
+          </div>
+
+          <!-- Metric Badges High-Contrast Wireframe -->
+          <div class="flex items-center gap-1.5 text-[10px] font-mono">
+            <span class="px-1.5 py-0.5 bg-tactical-surface border border-tactical-ice text-tactical-ice font-bold">
+              [200_OK: {countOk < 10 ? '0' + countOk : countOk}]
+            </span>
+            <span class="px-1.5 py-0.5 bg-tactical-amber/10 border border-tactical-amber/50 text-tactical-amber">
+              [WARN: {countWarn < 10 ? '0' + countWarn : countWarn}]
+            </span>
+            <span class="px-1.5 py-0.5 bg-tactical-crimson/10 border border-tactical-crimson/50 text-tactical-crimson">
+              [FAIL: {countFail < 10 ? '0' + countFail : countFail}]
+            </span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Workspace Grid: Left Sidebar vs Instrumentation Rack -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+      <!-- 3. Left Sidebar (Diagnostic Switchboard) -->
+      <aside 
+        aria-label="Matriz de diagnóstico y configuración" 
+        class="lg:col-span-4 bg-tactical-slate border border-tactical-wirelight p-3.5 space-y-3 relative {pestanaMovil === 'SWITCHBOARD' ? 'block' : 'hidden lg:block'}"
+      >
+        <div class="absolute -top-1 -left-1 text-tactical-dimmer text-[9px]">+</div>
+        <div class="absolute -top-1 -right-1 text-tactical-dimmer text-[9px]">+</div>
+
+        <!-- Panel Header -->
+        <div class="flex items-center justify-between pb-2 border-b border-tactical-wireframe">
+          <div class="flex items-center gap-1.5 text-xs font-bold text-tactical-softcyan">
+            <span class="text-tactical-ice font-mono">&gt;</span>
+            <span>DIAGNOSTIC_SWITCHBOARD</span>
+          </div>
+          <span class="text-[10px] font-mono px-1.5 py-0.2 bg-tactical-pitch border border-tactical-wirelight text-tactical-ice">
+            [{totalActivos}_OF_{parametrosDisponibles.length}_ENABLED]
           </span>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
-          {#each TIPOS_NORMAS as tipo}
-            {@const info = INFORMACION_NORMAS_AGUA[tipo]}
-            {@const esActiva = tipoSeleccionado === tipo}
-            {@const baselineCount = (PARAMETROS_BASELINE_DEFAULT[tipo] || []).length}
-
-            <button
-              type="button"
-              onclick={() => { cambiarNorma(tipo); menuNormasAbierto = false; }}
-              class="p-3.5 rounded-xl text-left transition-all duration-150 cursor-pointer flex flex-col justify-between border {esActiva ? 'bg-emerald-50/70 dark:bg-[#0f172a] border-emerald-500 shadow-md ring-1 ring-emerald-500/30' : 'bg-slate-50/60 dark:bg-[#030712] border-slate-200 dark:border-white/[0.06] hover:bg-slate-100 dark:hover:bg-[#0b1222] hover:border-slate-300 dark:hover:border-white/15'}"
-            >
-              <div class="flex items-center justify-between mb-2">
-                <div class="w-8 h-8 rounded-lg flex items-center justify-center {esActiva ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-500/30' : 'bg-slate-100 dark:bg-zinc-900/80 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-white/[0.06]'}">
-                  <Icon name={info.icono} size={18} />
-                </div>
-                <span class="text-[10px] font-mono px-2 py-0.5 rounded {esActiva ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-500/30' : 'bg-slate-100 dark:bg-zinc-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-white/[0.06]'}">
-                  {baselineCount} base
-                </span>
-              </div>
-
-              <div>
-                <h3 class="font-semibold text-xs text-slate-900 dark:text-white mb-0.5 line-clamp-1">
-                  {info.titulo}
-                </h3>
-                <p class="text-[11px] text-slate-600 dark:text-slate-400 line-clamp-2">
-                  {info.subtitulo}
-                </p>
-              </div>
-
-              <div class="mt-2 pt-2 border-t border-slate-100 dark:border-white/[0.04] text-[10px] font-mono flex items-center gap-1.5 {esActiva ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-slate-400 dark:text-slate-600'}">
-                {#if esActiva}
-                  <Icon name="check" size={12} class="text-emerald-600 dark:text-emerald-400" />
-                  <span>Activa</span>
-                {:else}
-                  <span>Seleccionar</span>
-                {/if}
-              </div>
-            </button>
-          {/each}
-        </div>
-      </div>
-    {/if}
-  </div>
-
-  <!-- ========================================================================
-       GRID PRINCIPAL: SIDEBAR IZQUIERDO (PUNTO 4) + ÁREA CENTRAL (PUNTO 5)
-       ======================================================================== -->
-  <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-    
-    <!-- LATERAL IZQUIERDO (SIDEBAR): SELECTOR Y CONTEO DE PARÁMETROS -->
-    <!-- LATERAL IZQUIERDO (SIDEBAR): SELECTOR Y CONTEO DE PARÁMETROS -->
-    <aside class="lg:col-span-4 bg-white dark:bg-[#060a14] rounded-xl border border-slate-200 dark:border-white/[0.06] lg:sticky lg:top-18 overflow-hidden shadow-sm">
-      <!-- Barra Superior / Header del Sidebar (En móvil funciona como botón toggle) -->
-      <div class="p-3.5 sm:p-4 border-b border-slate-200 dark:border-white/[0.06] flex items-center justify-between">
-        <div>
-          <h3 class="font-bold text-xs uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
-            <span class="flex items-center gap-1.5">
-              <Icon name="sliders" size={14} class="text-teal-600 dark:text-blue-400" />
-              <span>Parámetros a Medir</span>
-            </span>
-            <span class="lg:hidden text-[10px] font-mono px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800/40">
-              {cantidadSeleccionados} activos
-            </span>
-          </h3>
-          <p class="hidden sm:block text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">
-            Inicia con los {PARAMETROS_BASELINE_DEFAULT[tipoSeleccionado].length} básicos preseleccionados. Activa variables adicionales según tu análisis.
-          </p>
-        </div>
-
-        <!-- Botón de apertura/cierre en móvil (< lg) con Touch Target óptimo -->
-        <button
-          type="button"
-          onclick={() => sidebarAbiertoMobile = !sidebarAbiertoMobile}
-          class="lg:hidden min-h-[38px] px-3 py-1.5 rounded-lg text-xs font-mono font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-white/[0.04] hover:bg-slate-200 dark:hover:bg-white/[0.08] border border-slate-200 dark:border-white/10 transition flex items-center gap-1.5 cursor-pointer active:bg-slate-200"
-          aria-expanded={sidebarAbiertoMobile}
-          aria-label="Abrir o cerrar selector de parámetros"
-        >
-          <span>{sidebarAbiertoMobile ? 'Ocultar' : 'Configurar'}</span>
-          <span class="text-xs transition-transform duration-200 {sidebarAbiertoMobile ? 'rotate-180' : ''}">▾</span>
-        </button>
-
-        <span class="hidden lg:inline-flex text-[11px] font-mono px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800/40">
-          {cantidadSeleccionados} de {parametrosDisponibles.length} activos
-        </span>
-      </div>
-
-      <!-- Contenido colapsable en móvil, permanente en escritorio -->
-      <div class="{sidebarAbiertoMobile ? 'block' : 'hidden'} lg:block p-4 space-y-4">
-        <!-- Presets de Selección Rápida con altura táctil accesible -->
-        <div class="grid grid-cols-3 gap-2 text-[11px] font-mono">
-          <button
+        <!-- Quick Action Presets -->
+        <div class="grid grid-cols-3 gap-1">
+          <button 
             type="button"
-            onclick={restablecerABasicos}
-            class="min-h-[38px] sm:min-h-[30px] py-1.5 px-2 rounded-lg bg-emerald-50 dark:bg-zinc-900 hover:bg-emerald-100 dark:hover:bg-zinc-800 text-emerald-800 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-500/20 transition cursor-pointer text-center flex items-center justify-center font-semibold"
-            title="Restablece la selección a los 5 o 6 parámetros básicos obligatorios"
+            onclick={activarDef6}
+            class="py-1 px-1 bg-tactical-surface border border-tactical-cerulean text-tactical-softcyan hover:bg-tactical-cerulean/20 text-[10px] font-bold uppercase transition-colors text-center"
           >
-            Básicos
+            [SET_DEF_6]
           </button>
-          <button
+          <button 
             type="button"
-            onclick={seleccionarTodos}
-            class="min-h-[38px] sm:min-h-[30px] py-1.5 px-2 rounded-lg bg-slate-100 dark:bg-zinc-900 hover:bg-slate-200 dark:hover:bg-zinc-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/[0.06] transition cursor-pointer text-center flex items-center justify-center"
+            onclick={activarTodos}
+            class="py-1 px-1 bg-tactical-pitch border border-tactical-wirelight text-tactical-dim hover:text-tactical-text hover:border-tactical-wirehighlight text-[10px] uppercase transition-colors text-center"
           >
-            Todos
+            [ALL_{parametrosDisponibles.length}]
           </button>
-          <button
+          <button 
             type="button"
-            onclick={deseleccionarTodos}
-            class="min-h-[38px] sm:min-h-[30px] py-1.5 px-2 rounded-lg bg-slate-100 dark:bg-zinc-900 hover:bg-slate-200 dark:hover:bg-zinc-800 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 border border-slate-200 dark:border-white/[0.06] transition cursor-pointer text-center flex items-center justify-center"
+            onclick={purgarTodos}
+            class="py-1 px-1 bg-tactical-pitch border border-tactical-wirelight text-tactical-dim hover:text-tactical-crimson hover:border-tactical-crimson/50 text-[10px] uppercase transition-colors text-center"
           >
-            Limpiar
+            [PURGE]
           </button>
         </div>
 
-        <!-- Filtro por Categorías -->
+        <!-- Category Selector -->
         <div class="space-y-1">
-          <label for="filtro-categoria" class="text-[10px] font-mono uppercase tracking-wider text-slate-500 block">
-            Categoría
+          <label class="block text-[10px] uppercase tracking-wider text-tactical-dim font-bold" for="category-select">
+            --target-category=
           </label>
-          <select
-            id="filtro-categoria"
+          <select 
+            id="category-select"
             bind:value={categoriaFiltro}
-            class="w-full bg-slate-50 dark:bg-[#0d1424] border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-teal-500 dark:focus:border-blue-500 transition min-h-[40px] sm:min-h-[34px]"
+            class="w-full bg-[#0e1c26] border border-tactical-wirelight text-tactical-text text-xs p-1.5 font-mono focus:border-tactical-softcyan focus:ring-0 rounded-none cursor-pointer"
           >
-            {#each categoriasDisponibles as cat}
-              <option value={cat}>{cat}</option>
-            {/each}
+            <option value="ALL_ANALYTICAL_DOMAINS">ALL_ANALYTICAL_DOMAINS</option>
+            <option value="DOMAIN_01: FISICOQUIMICOS_BASICOS">DOMAIN_01: FISICOQUIMICOS_BASICOS</option>
+            <option value="DOMAIN_02: MICROBIOLOGICOS_PATOGENOS">DOMAIN_02: MICROBIOLOGICOS_PATOGENOS</option>
+            <option value="DOMAIN_03: METALES_PESADOS">DOMAIN_03: METALES_PESADOS</option>
+            <option value="DOMAIN_04: COMPUESTOS_ORGANICOS">DOMAIN_04: COMPUESTOS_ORGANICOS</option>
           </select>
         </div>
 
-        <!-- Buscador de Parámetros -->
+        <!-- CLI Prompt Search -->
         <div class="space-y-1">
-          <label for="buscador-input" class="text-[10px] font-mono uppercase tracking-wider text-slate-500 block">
-            Filtrar Parámetro
+          <label class="block text-[10px] uppercase tracking-wider text-tactical-dim font-bold" for="search-param">
+            &gt; grep_param --filter=
           </label>
           <div class="relative">
-            <input
-              id="buscador-input"
+            <span class="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none text-tactical-softcyan text-xs font-mono">&gt;</span>
+            <input 
+              id="search-param"
               type="text"
               bind:value={busquedaQuery}
-              placeholder="Buscar por nombre o ID..."
-              class="w-full bg-slate-50 dark:bg-[#0d1424] border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:border-teal-500 dark:focus:border-blue-500 transition min-h-[40px] sm:min-h-[34px]"
+              placeholder="AP_PH | Turbiedad | Cloro..."
+              class="w-full bg-[#0e1c26] border border-tactical-wirelight text-tactical-ice placeholder-tactical-dimmer text-xs pl-6 pr-2 py-1 font-mono focus:border-tactical-softcyan focus:ring-0 rounded-none"
             />
-            {#if busquedaQuery}
-              <button
-                type="button"
-                onclick={() => busquedaQuery = ''}
-                class="absolute right-2 top-2 h-6 w-6 flex items-center justify-center text-xs text-slate-400 hover:text-slate-700 dark:hover:text-white cursor-pointer"
-                aria-label="Borrar búsqueda"
-              >
-                <Icon name="x" size={13} />
-              </button>
-            {/if}
           </div>
         </div>
 
-        <!-- Lista de Parámetros con Checkbox Táctil -->
-        <div class="space-y-1.5 max-h-80 overflow-y-auto pr-1">
-          {#if parametrosSidebar.length === 0}
-            <div class="text-center py-6 text-xs text-slate-500">
-              Sin resultados para el filtro actual.
-            </div>
-          {:else}
-            {#each parametrosSidebar as param (param.id)}
-              {@const activo = !!seleccionados[param.id]}
-              {@const evalRes = evaluaciones[param.id]}
-
-              <button
-                type="button"
-                onclick={() => alternarParametro(param.id)}
-                class="w-full text-left p-2.5 rounded-lg transition-colors flex items-center justify-between gap-2 cursor-pointer border min-h-[44px] sm:min-h-[38px] {activo ? 'bg-emerald-50/70 dark:bg-[#0f172a] border-emerald-300 dark:border-blue-500/30 text-slate-900 dark:text-white' : 'bg-transparent border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[0.03]'}"
-              >
-                <div class="flex items-center gap-2.5 min-w-0">
-                  <input
-                    type="checkbox"
-                    checked={activo}
-                    onchange={() => alternarParametro(param.id)}
-                    class="h-4 w-4 rounded border-slate-300 dark:border-white/20 bg-white dark:bg-zinc-900 text-teal-600 dark:text-blue-500 focus:ring-0 cursor-pointer pointer-events-none"
-                  />
-                  <div class="truncate">
-                    <div class="text-xs truncate {activo ? 'font-semibold text-slate-900 dark:text-slate-200' : 'text-slate-600 dark:text-slate-400'}">
-                      {param.nombre}
-                    </div>
-                    <div class="text-[10px] font-mono text-slate-500 truncate">
-                      {param.rango.unidad} • {formatoRango(param)}
-                    </div>
-                  </div>
-                </div>
-
-                {#if activo && evalRes}
-                  <span 
-                    class="w-2.5 h-2.5 rounded-full shrink-0"
-                    style="background-color: {evalRes.ui.colorHex};"
-                    title={evalRes.diagnostico}
-                  ></span>
-                {/if}
-              </button>
-            {/each}
-          {/if}
-        </div>
-      </div>
-    </aside>
-
-    <!-- ÁREA CENTRAL (PUNTO 5): INPUTS Y TABLA DE PARÁMETROS ANALIZADOS -->
-    <section class="lg:col-span-8 space-y-5">
-      <!-- Header del Panel Central con Selector de Vistas y Botón de Exportación Rápida -->
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-white/[0.06] pb-3.5">
-        <div>
-          <h2 class="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-            <span>Mediciones Cuantitativas de Muestra</span>
-            <span class="text-xs font-mono font-normal text-slate-500 dark:text-slate-400">
-              ({parametrosActivosCentral.length} en evaluación)
-            </span>
-          </h2>
-          <p class="text-[11px] text-slate-600 dark:text-slate-500">
-            Digita los resultados de laboratorio o analiza la matriz de contraste normativo en tiempo real.
-          </p>
-        </div>
-
-        <!-- Controles de Vista y Acción -->
-        <div class="flex flex-wrap items-center gap-2">
-          <!-- Selector de Modo de Visualización (Tarjetas / Tabla / Todo) -->
-          <div class="flex items-center gap-1 bg-slate-100 dark:bg-[#060a14] p-1 rounded-lg border border-slate-200 dark:border-white/10 select-none">
+        <!-- Parameter Switchboard List -->
+        <div class="space-y-1 max-h-[520px] overflow-y-auto pr-0.5" role="group" aria-label="Canales de telemetría analítica">
+          {#each parametrosFiltrados as param, idx}
+            {@const activo = seleccionados[param.id]}
+            {@const chMeta = CHANNEL_CODES[param.id] ?? { ch: `CH_${(idx + 1) < 10 ? '0' + (idx + 1) : idx + 1}`, code: `${param.id}.SYS` }}
             <button
               type="button"
-              onclick={() => vistaDerecha = 'TODOS'}
-              class="px-2.5 py-1 rounded text-xs font-mono transition cursor-pointer flex items-center gap-1.5 {vistaDerecha === 'TODOS' ? 'bg-white dark:bg-blue-600 text-teal-800 dark:text-white font-semibold shadow-sm border border-slate-200 dark:border-transparent' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-white/[0.04]'}"
-              title="Ver simultáneamente tarjetas de edición y tabla de resultados"
+              onclick={() => seleccionados[param.id] = !activo}
+              class="w-full flex items-center justify-between p-2 border text-left cursor-pointer select-none transition-colors {activo ? 'bg-[#0e1c26] border-tactical-wirelight hover:border-tactical-softcyan/70' : 'bg-[#0a151e]/60 border-tactical-wireframe opacity-50 hover:opacity-85'}"
             >
-              <Icon name="sliders" size={12} />
-              <span>Todo</span>
-            </button>
-            <button
-              type="button"
-              onclick={() => vistaDerecha = 'TARJETAS'}
-              class="px-2.5 py-1 rounded text-xs font-mono transition cursor-pointer flex items-center gap-1.5 {vistaDerecha === 'TARJETAS' ? 'bg-white dark:bg-blue-600 text-teal-800 dark:text-white font-semibold shadow-sm border border-slate-200 dark:border-transparent' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-white/[0.04]'}"
-              title="Ver únicamente tarjetas de ajuste de parámetros"
-            >
-              <Icon name="sliders" size={12} />
-              <span>Tarjetas</span>
-            </button>
-            <button
-              type="button"
-              onclick={() => vistaDerecha = 'TABLA'}
-              class="px-2.5 py-1 rounded text-xs font-mono transition cursor-pointer flex items-center gap-1.5 {vistaDerecha === 'TABLA' ? 'bg-white dark:bg-blue-600 text-teal-800 dark:text-white font-semibold shadow-sm border border-slate-200 dark:border-transparent' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-white/[0.04]'}"
-              title="Ver únicamente tabla resumen de parámetros analizados"
-            >
-              <Icon name="table" size={12} />
-              <span>Tabla</span>
-            </button>
-          </div>
-
-          <!-- Botón de Exportación Superior -->
-          <button
-            type="button"
-            onclick={exportarReporteComoImagen}
-            disabled={parametrosActivosCentral.length === 0 || exportandoImagen}
-            class="min-h-[34px] px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 dark:bg-emerald-600 dark:hover:bg-emerald-500 disabled:opacity-40 disabled:pointer-events-none text-white text-xs font-mono font-medium flex items-center gap-1.5 transition cursor-pointer shadow-md active:scale-95"
-            title="Exporta y descarga un informe en alta definición (PNG) de la tabla analizada"
-          >
-            <Icon name={exportandoImagen ? 'download' : 'camera'} size={13} class={exportandoImagen ? 'animate-bounce' : ''} />
-            <span>{exportandoImagen ? 'Generando...' : 'Guardar Imagen'}</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Notificación Toast tras exportar imagen -->
-      {#if mensajeExportacion}
-        <div
-          class="p-3 rounded-lg border text-xs font-mono flex items-center justify-between gap-3 animate-fade-in {mensajeExportacion.includes('exitosamente') ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-500/30 text-emerald-800 dark:text-emerald-300' : 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-500/30 text-rose-800 dark:text-rose-300'}"
-        >
-          <div class="flex items-center gap-2">
-            <Icon name={mensajeExportacion.includes('exitosamente') ? 'check-circle' : 'alert-triangle'} size={15} />
-            <span>{mensajeExportacion}</span>
-          </div>
-          <button
-            type="button"
-            onclick={() => mensajeExportacion = null}
-            class="text-slate-400 hover:text-slate-700 dark:hover:text-white cursor-pointer"
-            aria-label="Cerrar notificación"
-          >
-            <Icon name="x" size={13} />
-          </button>
-        </div>
-      {/if}
-
-      {#if parametrosActivosCentral.length === 0}
-        <div class="p-8 text-center rounded-xl bg-slate-50 dark:bg-[#060a14] border border-dashed border-slate-200 dark:border-white/10 space-y-3">
-          <div class="flex justify-center text-slate-400 dark:text-slate-600">
-            <Icon name="clipboard" size={36} class="text-slate-400 dark:text-slate-600" />
-          </div>
-          <h3 class="text-sm font-semibold text-slate-900 dark:text-white">No hay parámetros seleccionados</h3>
-          <p class="text-xs text-slate-600 dark:text-slate-500 max-w-sm mx-auto">
-            Activa parámetros desde el lateral izquierdo o presiona el botón para cargar los básicos de la norma.
-          </p>
-          <button
-            type="button"
-            onclick={restablecerABasicos}
-            class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-teal-600 hover:bg-teal-500 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white transition cursor-pointer"
-          >
-            Activar Parámetros Básicos
-          </button>
-        </div>
-      {:else}
-        <!-- VISTA DE TARJETAS (INPUTS) -->
-        {#if vistaDerecha === 'TODOS' || vistaDerecha === 'TARJETAS'}
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-            {#each parametrosActivosCentral as param (param.id)}
-              {@const evalRes = evaluaciones[param.id]}
-              {@const presetAnim = evalRes?.ui?.presetCss || ''}
-
-              <div
-                class="p-4 rounded-xl bg-white dark:bg-[#070d18] border transition-all duration-200 relative flex flex-col justify-between shadow-sm {presetAnim ? presetAnim : 'border-slate-200 dark:border-white/[0.08]'}"
-                style={evalRes ? `border-color: ${evalRes.ui.colorHex}80;` : ''}
-              >
+              <div class="flex items-center gap-2">
+                <span class="font-mono text-[11px] font-bold {activo ? 'text-tactical-ice' : 'text-tactical-dimmer'}">
+                  [{activo ? 'x' : ' '}]
+                </span>
                 <div>
-                  <!-- Header Card: Nombre e Identificador -->
-                  <div class="flex items-start justify-between gap-2 mb-2">
+                  <div class="text-[11px] font-bold tracking-tight flex items-center gap-1.5 {activo ? 'text-tactical-text' : 'text-tactical-dim'}">
+                    <span>{param.nombre}</span>
+                    <span class="text-[9px] text-tactical-softcyan font-normal font-mono">[{chMeta.ch}]</span>
+                  </div>
+                  <span class="text-[9px] text-tactical-dim font-mono block">
+                    LIM: {param.rango.operador === 'ENTRE' ? `${param.rango.min} .. ${param.rango.max}` : param.rango.operador === 'MENOR_IGUAL' ? `≤ ${param.rango.max}` : param.rango.operador === 'MAYOR_IGUAL' ? `≥ ${param.rango.min}` : '0'} {param.rango.unidad} // {param.normaLegal}
+                  </span>
+                </div>
+              </div>
+              <span class="w-1.5 h-1.5 rounded-none {activo ? 'bg-tactical-ice' : 'bg-tactical-wirelight'}" title={activo ? 'Canal activo' : 'Canal inactivo'}></span>
+            </button>
+          {/each}
+        </div>
+
+        <!-- Quick System Info Footnote -->
+        <div class="pt-2 border-t border-tactical-wireframe text-[9px] text-tactical-dim font-mono flex items-center justify-between">
+          <span>POLL_INTERVAL: 250ms</span>
+          <span class="text-tactical-softcyan font-bold">DRIVER: SIMA_ADC_V4</span>
+        </div>
+      </aside>
+
+      <!-- 4. Right Section: Instrumentation Rack / Log Table -->
+      <section 
+        aria-label="Canales de adquisición de datos" 
+        class="lg:col-span-8 space-y-3 {pestanaMovil === 'SWITCHBOARD' ? 'hidden lg:block' : 'block'}"
+      >
+        <!-- Toolbar -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-tactical-slate border border-tactical-wirelight p-2.5">
+          <div class="flex items-center gap-2">
+            <span class="text-tactical-softcyan font-bold text-xs">&gt; SYS_INSTRUMENTATION_RACK</span>
+            <span class="text-[10px] text-tactical-dim font-mono">// {totalActivos} ACTIVOS // CONTRASTACIÓN AUTOMÁTICA EN TIEMPO REAL</span>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <div class="flex bg-tactical-pitch border border-tactical-wirelight p-0.5 text-[10px]">
+              <button 
+                type="button"
+                onclick={() => vistaModo = 'RAW'}
+                class="px-2 py-0.5 transition-colors {vistaModo === 'RAW' ? 'bg-tactical-surface border border-tactical-cerulean/70 text-tactical-softcyan font-bold' : 'text-tactical-dim hover:text-white'}"
+              >
+                RAW
+              </button>
+              <button 
+                type="button"
+                onclick={() => vistaModo = 'RACK'}
+                class="px-2 py-0.5 transition-colors {vistaModo === 'RACK' ? 'bg-tactical-surface border border-tactical-cerulean/70 text-tactical-softcyan font-bold' : 'text-tactical-dim hover:text-white'}"
+              >
+                RACK
+              </button>
+              <button 
+                type="button"
+                onclick={() => vistaModo = 'LOG_TABLE'}
+                class="px-2 py-0.5 transition-colors {vistaModo === 'LOG_TABLE' ? 'bg-tactical-surface border border-tactical-cerulean/70 text-tactical-softcyan font-bold' : 'text-tactical-dim hover:text-white'}"
+              >
+                LOG_TABLE
+              </button>
+            </div>
+
+            <button 
+              type="button"
+              onclick={exportarJson}
+              class="px-2.5 py-1 bg-tactical-cerulean/20 hover:bg-tactical-cerulean/35 text-tactical-ice border border-tactical-cerulean font-bold text-[10px] tracking-wider uppercase transition-colors flex items-center gap-1"
+            >
+              <span>[DUMP_LOG_JSON]</span>
+            </button>
+          </div>
+        </div>
+
+        {#if vistaModo === 'RACK' || pestanaMovil === 'RACK'}
+          <!-- 6 Hardware-Style Instrument Boxes Grid -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {#each resultadosActivos as r, idx}
+              {@const p = r.parametro}
+              {@const chMeta = CHANNEL_CODES[p.id] ?? { ch: `CH_${(idx + 1) < 10 ? '0' + (idx + 1) : idx + 1}`, code: `${p.id}.SYS`, unitTag: `[${p.rango.unidad}]`, note: 'TELEMETRÍA DIGITAL' }}
+              {@const isOk = r.evaluacion.estado === 'CUMPLE'}
+              {@const isWarn = r.evaluacion.estado === 'ALERTA_PREVENTIVA'}
+              {@const isFail = r.evaluacion.estado === 'NO_CUMPLE'}
+
+              <article class="bg-tactical-slate border border-tactical-wirelight p-3 relative flex flex-col justify-between hover:border-tactical-softcyan/60 transition-colors shadow-sm">
+                <!-- Crosshair corners -->
+                <span class="absolute top-0.5 left-1 text-tactical-wirehighlight text-[9px] font-mono select-none">[+</span>
+                <span class="absolute top-0.5 right-1 text-tactical-wirehighlight text-[9px] font-mono select-none">+]</span>
+                <span class="absolute bottom-0.5 left-1 text-tactical-wirehighlight text-[9px] font-mono select-none">[+</span>
+                <span class="absolute bottom-0.5 right-1 text-tactical-wirehighlight text-[9px] font-mono select-none">+]</span>
+
+                <div>
+                  <!-- Box Title Header -->
+                  <div class="flex items-center justify-between pb-1.5 border-b border-tactical-wireframe">
                     <div>
-                      <h3 class="font-bold text-xs text-slate-900 dark:text-white">
-                        {param.nombre}
+                      <span class="text-[10px] font-bold text-tactical-softcyan font-mono tracking-wider">
+                        {chMeta.ch} // {chMeta.code}
+                      </span>
+                      <h3 class="text-xs font-bold uppercase tracking-wider text-tactical-text">
+                        {p.nombre}
                       </h3>
-                      <span class="text-[10px] font-mono text-slate-500">
-                        ID: {param.id} • {param.categoria}
-                      </span>
                     </div>
 
-                    {#if evalRes}
-                      <span
-                        class="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider shrink-0"
-                        style="color: ${evalRes.ui.colorHex}; background-color: ${evalRes.ui.colorHex}15; border: 1px solid ${evalRes.ui.colorHex}40;"
+                    <span class="px-1.5 py-0.5 border font-mono text-[9px] font-bold {isOk ? 'bg-tactical-surface border-tactical-ice text-tactical-ice' : isWarn ? 'bg-tactical-amber/15 border-tactical-amber text-tactical-amber' : 'bg-tactical-crimson/15 border-tactical-crimson text-tactical-crimson'}">
+                      {isOk ? '[200_OK // IN_SPEC]' : isWarn ? '[WARN_503 // THRESHOLD]' : p.id === 'AP_E_COLI' ? '[CRIT: CERO_TOLERANCIA]' : '[FAIL_400 // CRIT_FAIL]'}
+                    </span>
+                  </div>
+
+                  <!-- Readout Display -->
+                  <div class="mt-2.5 flex items-baseline justify-between">
+                    <div class="flex items-baseline gap-2">
+                      <span class="text-3xl font-black font-mono text-tactical-ice tracking-tight">
+                        {r.valor}
+                      </span>
+                      <span class="text-xs font-mono text-tactical-dim">{chMeta.unitTag}</span>
+                    </div>
+                    <span class="text-[9px] font-mono text-tactical-dim uppercase">{chMeta.note}</span>
+                  </div>
+
+                  <!-- Dynamic ASCII Bar Sparkline Visualizer -->
+                  <div class="mt-1 bg-tactical-pitch px-2 py-1 border border-tactical-wireframe flex items-center justify-between text-[10px] font-mono">
+                    <span class="font-bold tracking-widest">
+                      {#if isFail}
+                        <span class="text-tactical-crimson">||||||||||||||||||||</span>
+                      {:else if isWarn}
+                        <span class="text-tactical-amber">||||||||||||||</span><span class="text-tactical-dimmer">......</span>
+                      {:else}
+                        <span class="text-tactical-ice">||||||||</span><span class="text-tactical-softcyan">||||||||</span><span class="text-tactical-dimmer">......</span>
+                      {/if}
+                    </span>
+                    <span class="text-tactical-dim text-[9px]">
+                      {isOk ? '[50.0% OF RANGE]' : isWarn ? '[85.0% OF LIMIT]' : '[CRIT_EXCEEDED]'}
+                    </span>
+                  </div>
+
+                  <!-- Standard Reference Specs -->
+                  <div class="mt-2 text-[9px] font-mono text-tactical-dim bg-tactical-pitch/70 p-1.5 border border-tactical-wireframe">
+                    <span class="text-tactical-text font-bold">RULE_REF:</span> {p.normaLegal} // 
+                    <span class="text-tactical-softcyan font-semibold">
+                      {p.rango.operador === 'ENTRE' ? `RANGO: ${p.rango.min} .. ${p.rango.max}` : p.rango.operador === 'MENOR_IGUAL' ? `MAX: ≤ ${p.rango.max}` : p.rango.operador === 'MAYOR_IGUAL' ? `MIN: ≥ ${p.rango.min}` : 'EXIGIDO: 0'} {p.rango.unidad}
+                    </span>
+                  </div>
+
+                  <!-- Tactical Lab Step Potentiometer -->
+                  <div class="mt-2.5 space-y-1">
+                    <span class="text-[9px] uppercase tracking-wider text-tactical-dim font-bold block">
+                      POTENTIOMETER // INPUT_VAL
+                    </span>
+                    <div class="flex items-stretch bg-tactical-pitch border border-tactical-wirelight">
+                      <button 
+                        type="button"
+                        onclick={() => ajustarValor(p.id, -1)}
+                        class="w-9 bg-tactical-surface hover:bg-tactical-cerulean/25 active:bg-tactical-cerulean/40 text-tactical-ice border-r border-tactical-wirelight font-mono text-sm font-bold flex items-center justify-center select-none"
+                        aria-label="Disminuir valor"
                       >
-                        {evalRes.estado.replace('_', ' ')}
-                      </span>
-                    {/if}
-                  </div>
+                        −
+                      </button>
 
-                  <!-- Rango Legal y Norma -->
-                  <div class="mb-3 bg-slate-50 dark:bg-[#03060d] p-2 rounded-lg border border-slate-200 dark:border-white/[0.04] flex items-center justify-between text-[11px] font-mono">
-                    <div>
-                      <span class="text-slate-500 block text-[9px]">Límite Legal:</span>
-                      <span class="text-emerald-700 dark:text-emerald-400 font-semibold">{formatoRango(param)}</span>
-                    </div>
-                    <div class="text-right max-w-[140px] truncate">
-                      <span class="text-slate-500 block text-[9px]">Artículo:</span>
-                      <span class="text-slate-700 dark:text-slate-300 truncate block" title={param.normaLegal}>{param.normaLegal}</span>
-                    </div>
-                  </div>
-
-                  <!-- Input Cuantitativo con Flechas Estilizadas y Badge de Unidad Separado -->
-                  <div class="space-y-1 mb-3">
-                    <label for="input-{param.id}" class="text-[10px] font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400 block">
-                      Valor Medido:
-                    </label>
-                    <div class="relative flex items-center rounded-lg bg-slate-50 dark:bg-[#03060d] border border-slate-200 dark:border-white/10 focus-within:border-teal-500 dark:focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-teal-500/30 dark:focus-within:ring-blue-500/30 transition">
-                      <!-- Campo de entrada numérico con teclado decimal para móviles y prevención de zoom en iOS -->
-                      <input
-                        id="input-{param.id}"
-                        type="number"
-                        inputmode="decimal"
-                        step={determinarStep(param)}
-                        bind:value={valoresIngresados[param.id]}
-                        placeholder="0.00"
-                        class="flex-1 min-w-0 bg-transparent px-3 py-2.5 sm:py-2 text-base sm:text-xs font-mono text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-700 focus:outline-none"
+                      <input 
+                        type="number" 
+                        value={r.valor}
+                        step={determinarStep(p)}
+                        oninput={(e) => handleInputChange(p.id, e)}
+                        class="flex-1 bg-[#0e1c26] font-mono text-sm font-bold text-center py-1 px-2 border-0 focus:ring-1 focus:ring-tactical-softcyan text-tactical-ice"
                       />
 
-                      <!-- Bloque derecho: Unidad y Controles de Flechas Estilizadas -->
-                      <div class="flex items-center gap-1.5 pr-1.5 shrink-0 select-none">
-                        <!-- Badge de Unidad Legal -->
-                        <span class="px-2 py-1 sm:py-0.5 rounded bg-slate-200/80 dark:bg-zinc-900/90 border border-slate-300/80 dark:border-white/[0.08] text-[10px] font-mono text-slate-700 dark:text-slate-300">
-                          {param.rango.unidad}
-                        </span>
+                      <button 
+                        type="button"
+                        onclick={() => ajustarValor(p.id, 1)}
+                        class="w-9 bg-tactical-surface hover:bg-tactical-cerulean/25 active:bg-tactical-cerulean/40 text-tactical-ice border-l border-tactical-wirelight font-mono text-sm font-bold flex items-center justify-center select-none"
+                        aria-label="Aumentar valor"
+                      >
+                        +
+                      </button>
 
-                        <!-- Flechas personalizadas (Custom Steppers adaptados a touch) -->
-                        <div class="flex items-center sm:flex-col border border-slate-300 dark:border-white/[0.1] rounded-md sm:rounded bg-white dark:bg-zinc-900/80 overflow-hidden shadow-sm">
-                          <!-- Botón Decrementar móvil -->
-                          <button
-                            type="button"
-                            onclick={() => decrementarValor(param)}
-                            class="sm:hidden h-8 w-8 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-blue-600/40 border-r border-slate-200 dark:border-white/[0.06] transition-colors cursor-pointer active:bg-slate-200"
-                            title="Disminuir (-{determinarStep(param)})"
-                            aria-label="Decrementar {param.nombre}"
-                          >
-                            <span class="text-sm font-bold font-mono">−</span>
-                          </button>
-                          <!-- Botón Incrementar (móvil y desktop) -->
-                          <button
-                            type="button"
-                            onclick={() => incrementarValor(param)}
-                            class="h-8 w-8 sm:h-3.5 sm:w-5 flex items-center justify-center text-slate-600 sm:text-slate-500 dark:text-slate-300 sm:dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-blue-600/40 sm:border-b sm:border-slate-200 dark:border-white/[0.06] transition-colors cursor-pointer active:bg-slate-200"
-                            title="Aumentar (+{determinarStep(param)})"
-                            aria-label="Incrementar {param.nombre}"
-                          >
-                            <span class="sm:hidden text-sm font-bold font-mono">+</span>
-                            <svg class="hidden sm:block w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-                              <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" />
-                            </svg>
-                          </button>
-                          <!-- Botón Decrementar desktop -->
-                          <button
-                            type="button"
-                            onclick={() => decrementarValor(param)}
-                            class="hidden sm:flex h-3.5 w-5 items-center justify-center text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-blue-600/40 transition-colors cursor-pointer active:bg-slate-200"
-                            title="Disminuir (-{determinarStep(param)})"
-                            aria-label="Decrementar {param.nombre}"
-                          >
-                            <svg class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-                              <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </button>
-                        </div>
+                      <div class="px-2 bg-tactical-surface border-l border-tactical-wirelight flex items-center text-[10px] text-tactical-dim font-mono">
+                        {chMeta.unitTag}
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <!-- Diagnóstico Normativo en Vivo -->
-                {#if evalRes}
-                  <div
-                    class="pt-2 border-t border-slate-100 dark:border-white/[0.04] text-[11px] font-mono flex items-start gap-1.5"
-                    style="color: {evalRes.ui.colorHex};"
-                  >
-                    <Icon
-                      name={evalRes.estado === 'CUMPLE' ? 'check-circle' : evalRes.estado === 'ALERTA_PREVENTIVA' ? 'alert-triangle' : 'x-circle'}
-                      size={14}
-                      class="shrink-0 mt-0.5"
-                    />
-                    <p class="leading-tight text-[10px]">
-                      {evalRes.diagnostico}
-                    </p>
-                  </div>
-                {/if}
-              </div>
-            {/each}
-          </div>
-        {/if}
-
-        <!-- TABLA RESUMEN DE PARÁMETROS ANALIZADOS Y EXPORTACIÓN A IMAGEN (PNG) -->
-        {#if vistaDerecha === 'TODOS' || vistaDerecha === 'TABLA'}
-          <div class="bg-white dark:bg-[#060a14] rounded-xl border border-slate-200 dark:border-white/[0.08] overflow-hidden shadow-md space-y-0">
-            <!-- Header de la Tabla -->
-            <div class="p-4 bg-slate-50 dark:bg-[#090f1f] border-b border-slate-200 dark:border-white/[0.08] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <div class="flex items-center gap-2">
-                  <Icon name="table" size={16} class="text-teal-600 dark:text-blue-400" />
-                  <h3 class="font-bold text-xs uppercase tracking-wider text-slate-900 dark:text-white">
-                    Tabla de Parámetros Analizados
-                  </h3>
-                  <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-teal-50 dark:bg-blue-950/60 text-teal-800 dark:text-blue-400 border border-teal-200 dark:border-blue-800/40">
-                    {parametrosActivosCentral.length} variables
+                <!-- Bottom Status Telemetry Footer -->
+                <div class="mt-3 pt-1.5 border-t border-tactical-wireframe text-[10px] font-mono flex items-center gap-1.5">
+                  <span class="font-bold {isOk ? 'text-tactical-ice' : isWarn ? 'text-tactical-amber' : 'text-tactical-crimson'}">&gt;&gt;</span>
+                  <span class="text-tactical-text text-[10px]">
+                    VERIFICADO: <strong class="{isOk ? 'text-tactical-ice' : isWarn ? 'text-tactical-amber' : 'text-tactical-crimson'}">{r.valor} {p.rango.unidad}</strong> 
+                    {isOk ? 'dentro de especificaciones normales.' : isWarn ? 'en umbral de advertencia temprana.' : 'no conforme según norma vigente.'}
                   </span>
                 </div>
-                <p class="text-[11px] text-slate-600 dark:text-slate-400 mt-1">
-                  Contraste legal en tiempo real según <span class="text-slate-800 dark:text-slate-300 font-mono">{normaActiva.norma}</span> ({normaActiva.titulo}).
-                </p>
-              </div>
-
-              <!-- Botón Guardar como Imagen (PNG) -->
-              <button
-                type="button"
-                onclick={exportarReporteComoImagen}
-                disabled={exportandoImagen}
-                class="min-h-[38px] px-3.5 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 dark:bg-emerald-600 dark:hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-mono font-semibold flex items-center justify-center gap-2 shadow-md transition cursor-pointer active:scale-95 shrink-0"
-              >
-                <Icon name={exportandoImagen ? 'download' : 'camera'} size={15} class={exportandoImagen ? 'animate-bounce' : ''} />
-                <span>{exportandoImagen ? 'Generando PNG...' : 'Guardar como Imagen (PNG)'}</span>
-              </button>
-            </div>
-
-            <!-- Estructura Tabular Responsiva -->
-            <div class="overflow-x-auto">
-              <table class="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr class="bg-slate-100 dark:bg-[#0b1328] text-[10px] font-mono uppercase tracking-wider text-slate-700 dark:text-slate-400 border-b border-slate-200 dark:border-white/[0.08]">
-                    <th class="py-3 px-3 w-10 text-center">#</th>
-                    <th class="py-3 px-3 min-w-[180px]">Parámetro</th>
-                    <th class="py-3 px-3 min-w-[110px]">Categoría</th>
-                    <th class="py-3 px-3 min-w-[120px]">Valor Medido</th>
-                    <th class="py-3 px-3 min-w-[130px]">Límite Legal</th>
-                    <th class="py-3 px-3 min-w-[110px]">Estado</th>
-                    <th class="py-3 px-3 min-w-[200px]">Diagnóstico Técnico</th>
+              </article>
+            {/each}
+          </div>
+        {:else if vistaModo === 'LOG_TABLE' || pestanaMovil === 'LOGS'}
+          <!-- Telemetry Log Table View -->
+          <div class="bg-tactical-slate border border-tactical-wirelight p-3 overflow-x-auto">
+            <table class="w-full text-left font-mono text-xs">
+              <thead>
+                <tr class="border-b border-tactical-wireframe text-tactical-dim text-[10px] uppercase">
+                  <th class="p-2">Canal</th>
+                  <th class="p-2">Parámetro</th>
+                  <th class="p-2">Valor</th>
+                  <th class="p-2">Unidad</th>
+                  <th class="p-2">Límite Normativo</th>
+                  <th class="p-2">Estado</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-tactical-wireframe/40">
+                {#each resultadosActivos as r}
+                  <tr class="hover:bg-tactical-surface/50">
+                    <td class="p-2 text-tactical-softcyan font-bold">{r.parametro.id}</td>
+                    <td class="p-2 text-tactical-text">{r.parametro.nombre}</td>
+                    <td class="p-2 text-tactical-ice font-bold">{r.valor}</td>
+                    <td class="p-2 text-tactical-dim">{r.parametro.rango.unidad}</td>
+                    <td class="p-2 text-tactical-dimmer">{r.parametro.normaLegal}</td>
+                    <td class="p-2">
+                      <span class="px-1.5 py-0.5 rounded text-[9px] font-bold {r.evaluacion.cumple ? 'bg-tactical-surface text-tactical-ice border border-tactical-ice/50' : 'bg-tactical-crimson/20 text-tactical-crimson border border-tactical-crimson/40'}">
+                        {r.evaluacion.estado}
+                      </span>
+                    </td>
                   </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100 dark:divide-white/[0.04] font-mono">
-                  {#each parametrosActivosCentral as param, i (param.id)}
-                    {@const evalRes = evaluaciones[param.id]}
-                    {@const valor = valoresIngresados[param.id]}
-                    {@const esPar = i % 2 === 0}
-
-                    <tr class="transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.03] {esPar ? 'bg-white dark:bg-[#060a14]' : 'bg-slate-50/50 dark:bg-[#040711]'}">
-                      <!-- 1. Índice -->
-                      <td class="py-3 px-3 text-center text-slate-500 font-mono text-[11px]">
-                        {String(i + 1).padStart(2, '0')}
-                      </td>
-
-                      <!-- 2. Nombre del Parámetro -->
-                      <td class="py-3 px-3">
-                        <div class="font-sans font-medium text-slate-900 dark:text-slate-100 text-xs leading-snug">
-                          {param.nombre}
-                        </div>
-                        <div class="text-[10px] text-slate-500 font-mono mt-0.5">
-                          ID: {param.id}
-                        </div>
-                      </td>
-
-                      <!-- 3. Categoría -->
-                      <td class="py-3 px-3">
-                        <span class="text-[10px] text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.06] inline-block">
-                          {param.categoria}
-                        </span>
-                      </td>
-
-                      <!-- 4. Valor Medido -->
-                      <td class="py-3 px-3">
-                        <div class="font-bold text-teal-700 dark:text-sky-400 text-xs">
-                          {valor !== undefined ? valor : '—'}
-                          <span class="text-[10px] font-normal text-slate-500 dark:text-slate-400 ml-1">
-                            {param.rango.unidad}
-                          </span>
-                        </div>
-                      </td>
-
-                      <!-- 5. Límite Legal -->
-                      <td class="py-3 px-3">
-                        <div class="text-emerald-700 dark:text-emerald-400 font-semibold text-xs">
-                          {formatoRango(param)}
-                        </div>
-                        <div class="text-[9px] text-slate-500 truncate max-w-[130px] mt-0.5" title={param.normaLegal}>
-                          {param.normaLegal}
-                        </div>
-                      </td>
-
-                      <!-- 6. Estado de Conformidad -->
-                      <td class="py-3 px-3">
-                        {#if evalRes}
-                          <span
-                            class="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider inline-flex items-center gap-1.5"
-                            style="color: {evalRes.ui.colorHex}; background-color: {evalRes.ui.colorHex}15; border: 1px solid {evalRes.ui.colorHex}40;"
-                          >
-                            <span class="w-1.5 h-1.5 rounded-full" style="background-color: {evalRes.ui.colorHex};"></span>
-                            <span>{evalRes.estado.replace('_', ' ')}</span>
-                          </span>
-                        {:else}
-                          <span class="text-[10px] text-slate-500 dark:text-slate-600 font-mono">
-                            PENDIENTE
-                          </span>
-                        {/if}
-                      </td>
-
-                      <!-- 7. Diagnóstico Técnico -->
-                      <td class="py-3 px-3">
-                        {#if evalRes}
-                          <div class="flex items-start gap-1.5" style="color: {evalRes.ui.colorHex};">
-                            <Icon
-                              name={evalRes.estado === 'CUMPLE' ? 'check' : evalRes.estado === 'ALERTA_PREVENTIVA' ? 'alert-triangle' : 'x'}
-                              size={13}
-                              class="shrink-0 mt-0.5"
-                            />
-                            <p class="font-sans text-[11px] text-slate-700 dark:text-slate-300 leading-snug">
-                              {evalRes.diagnostico}
-                            </p>
-                          </div>
-                        {:else}
-                          <span class="text-[11px] font-sans text-slate-500 dark:text-slate-600">
-                            Sin datos cuantitativos ingresados
-                          </span>
-                        {/if}
-                      </td>
-                    </tr>
-                  {/each}
-                </tbody>
-              </table>
-            </div>
-
-            <!-- Barra Inferior de Métricas Resumen de la Tabla -->
-            <div class="p-3 bg-slate-50 dark:bg-[#080e1e] border-t border-slate-200 dark:border-white/[0.06] flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono">
-              <div class="flex flex-wrap items-center gap-3 text-slate-600 dark:text-slate-400 text-[11px]">
-                <span>Total: <strong class="text-slate-900 dark:text-white">{metricas.total}</strong></span>
-                <span class="text-emerald-700 dark:text-emerald-400 font-medium">● {metricas.conformes} Conformes</span>
-                <span class="text-amber-700 dark:text-amber-400 font-medium">● {metricas.alertas} Alerta</span>
-                <span class="text-rose-700 dark:text-rose-400 font-medium">● {metricas.noConformes} No Conformes</span>
-              </div>
-              <div class="flex items-center gap-2">
-                <span class="text-slate-500 text-[11px]">Conformidad:</span>
-                <span class="px-2 py-0.5 rounded font-bold text-xs {metricas.porcentaje >= 80 ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800/40' : metricas.porcentaje >= 50 ? 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-400 border border-amber-300 dark:border-amber-800/40' : 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-400 border border-rose-300 dark:border-rose-800/40'}">
-                  {metricas.porcentaje}%
-                </span>
-              </div>
-            </div>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+        {:else}
+          <!-- RAW JSON Inspection Stream -->
+          <div class="bg-[#060f18] border border-tactical-wirelight p-3 font-mono text-xs text-tactical-ice overflow-x-auto max-h-[600px]">
+            <pre>{JSON.stringify({
+              matrix: tipoSeleccionado,
+              timestamp: utcClock,
+              active_channels: totalActivos,
+              irca_score: ircaEstimado,
+              readings: resultadosActivos.map(r => ({
+                id: r.parametro.id,
+                name: r.parametro.nombre,
+                val: r.valor,
+                unit: r.parametro.rango.unidad,
+                status: r.evaluacion.estado
+              }))
+            }, null, 2)}</pre>
           </div>
         {/if}
-      {/if}
-    </section>
-  </div>
+
+        <!-- Mobile CLI Quick Actions & Terminal Prompt -->
+        <div class="lg:hidden space-y-2 pt-2">
+          <div class="grid grid-cols-2 gap-1.5">
+            <button 
+              type="button"
+              onclick={exportarCsv}
+              class="bg-[#0e1b24] border border-[#355e7d] text-[#82d1f2] px-2 py-2 min-h-[44px] flex items-center justify-center gap-1 font-mono text-[10px] tracking-wider active:bg-[#4ba3cc] active:text-[#00202d] shadow-sm transition-colors"
+            >
+              <span class="material-symbols-outlined text-[16px]">file_download</span>
+              <span>[EXPORT_TELEMETRY.CSV]</span>
+            </button>
+            <button 
+              type="button"
+              onclick={exportarJson}
+              class="bg-[#142533] border border-[#355e7d] text-[#68b8de] px-2 py-2 min-h-[44px] flex items-center justify-center gap-1 font-mono text-[10px] tracking-wider active:bg-[#82d1f2] active:text-[#00344d] shadow-sm transition-colors"
+            >
+              <span class="material-symbols-outlined text-[16px]">terminal</span>
+              <span>[RUN_DIAGNOSTIC_BATCH]</span>
+            </button>
+          </div>
+
+          <div class="bg-[#060f18] border border-[#25445a] px-2 py-1.5 flex items-center justify-between text-on-surface-variant font-mono text-[10px]">
+            <span class="truncate text-[#68b8de]">SIMA-COLOMBIA/BOG-SUB-04 ❯ {mensajeTerminal}</span>
+            <span class="text-[#82d1f2] animate-pulse">█</span>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- 5. Footer Institucional de Telemetría -->
+  <footer class="mt-auto border-t border-tactical-wirelight bg-tactical-pitch/95 py-2 px-4 text-[10px] font-mono text-tactical-dim select-none">
+    <div class="max-w-[1720px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+      <div class="flex items-center gap-2">
+        <span class="text-tactical-softcyan font-bold">&gt; SIMA_COLOMBIA // CORE_TELEMETRY</span>
+        <span class="text-tactical-wirelight">|</span>
+        <span>MARCO: DECRETO 1575 / RES. 2115 DE 2007 (MPS/MADS)</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="text-tactical-ice">[PROTOCOLO_INS]</span>
+        <span>/</span>
+        <span class="text-tactical-softcyan">[SIVICAP_BRIDGE]</span>
+        <span>/</span>
+        <span>[SLA: 99.98% REALTIME]</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- 6. Mobile Bottom Navigation Bar (Tactical Handheld Dock) -->
+  <nav class="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-[#0a141d]/95 backdrop-blur-xl border-t border-[#25445a] shadow-[0_-4px_24px_rgba(6,15,24,0.8)] pb-safe">
+    <div class="flex items-center justify-between px-3 py-1 bg-[#060f18] border-b border-[#25445a]/60 text-[10px] font-mono">
+      <div class="flex items-center gap-2">
+        <span class="text-[#82d1f2] bg-[#142533] border border-[#25445a] px-1.5 py-0.5">[OK: {countOk}]</span>
+        <span class="text-warning bg-warning/10 border border-warning/30 px-1.5 py-0.5">[WARN: {countWarn}]</span>
+        <span class="text-error bg-error/10 border border-error/30 px-1.5 py-0.5">[FAIL: {countFail}]</span>
+      </div>
+      <span class="text-on-surface-variant font-mono text-[9px] tracking-wider">LINK: DUPLEX_9600bps</span>
+    </div>
+
+    <div class="grid grid-cols-3 h-12 p-1 gap-1 font-mono text-xs">
+      <button 
+        type="button"
+        onclick={() => pestanaMovil = 'RACK'}
+        class="flex items-center justify-center gap-1 transition-colors min-h-[36px] {pestanaMovil === 'RACK' ? 'bg-[#1c3244] border border-[#355e7d] text-[#82d1f2] font-bold' : 'text-on-surface-variant'}"
+      >
+        <span class="material-symbols-outlined text-[16px]">developer_board</span>
+        <span>[RACK]</span>
+      </button>
+
+      <button 
+        type="button"
+        onclick={() => pestanaMovil = 'SWITCHBOARD'}
+        class="flex items-center justify-center gap-1 transition-colors min-h-[36px] {pestanaMovil === 'SWITCHBOARD' ? 'bg-[#1c3244] border border-[#355e7d] text-[#82d1f2] font-bold' : 'text-on-surface-variant'}"
+      >
+        <span class="material-symbols-outlined text-[16px]">tune</span>
+        <span>[SWITCHBOARD]</span>
+      </button>
+
+      <button 
+        type="button"
+        onclick={() => pestanaMovil = 'LOGS'}
+        class="flex items-center justify-center gap-1 transition-colors min-h-[36px] {pestanaMovil === 'LOGS' ? 'bg-[#1c3244] border border-[#355e7d] text-[#82d1f2] font-bold' : 'text-on-surface-variant'}"
+      >
+        <span class="material-symbols-outlined text-[16px]">terminal</span>
+        <span>[LOGS]</span>
+      </button>
+    </div>
+  </nav>
 </div>

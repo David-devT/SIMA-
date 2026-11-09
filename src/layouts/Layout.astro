@@ -1,12 +1,8 @@
 ---
 /**
  * @file Layout.astro
- * @description Master layout component implementing Astro's Islands Architecture shell.
- * 
- * Performance & Architecture Considerations:
- * - Soporte nativo para Modo Oscuro y Modo Claro con prevención de parpadeo (FOUC).
- * - Integración del componente Navbar interactivo con selector de accesibilidad WCAG 2.2 AAA.
- * - Iconografía vectorial y emblema institucional oficial (/logo.png).
+ * @description Shell maestro de la aplicación con fuentes oficiales de Google Fonts (Stitch Framework),
+ * prevención de FOUC, metadatos y arquitectura de islas.
  */
 
 import '../styles/global.css';
@@ -16,16 +12,18 @@ import FooterLegal from '../components/FooterLegal.svelte';
 interface Props {
   title?: string;
   description?: string;
+  hideNavFooter?: boolean;
 }
 
 const { 
-  title = "SIMA Colombia | Sistema Integral de Monitoreo Ambiental", 
-  description = "Simulador de evaluación de calidad ambiental en Colombia bajo resoluciones del MinAmbiente y MinSalud." 
+  title = "SIMA - Plataforma de Calidad Ambiental · Colombia", 
+  description = "Conoce y analiza en tiempo real la calidad del agua según las normativas oficiales (Res. 2115 de 2007) de forma rápida, clara y accesible para todos.",
+  hideNavFooter = false
 } = Astro.props;
 ---
 
 <!doctype html>
-<html lang="es" class="scroll-smooth">
+<html lang="es" class="dark scroll-smooth" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -33,6 +31,18 @@ const {
     <title>{title}</title>
     <meta name="description" content={description} />
     
+    <!-- Google Fonts oficiales de Stitch Design System -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link 
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300..800;1,300..800&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&family=Poppins:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Geist:wght@300;400;500;600;700&display=swap" 
+      rel="stylesheet" 
+    />
+    <link 
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" 
+      rel="stylesheet" 
+    />
+
     <!-- Metadatos Open Graph / Facebook -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content={Astro.url.href} />
@@ -72,7 +82,7 @@ const {
         try {
           const guardado = localStorage.getItem('theme');
           const prefiereOscuro = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-          const tema = guardado ? guardado : (prefiereOscuro ? 'dark' : 'light');
+          const tema = guardado ? guardado : (prefiereOscuro ? 'dark' : 'dark');
           
           if (tema === 'dark') {
             document.documentElement.classList.add('dark');
@@ -87,24 +97,22 @@ const {
       })();
     </script>
   </head>
-  <body class="bg-[#F8FAFC] dark:bg-[#0f1419] text-[#0F172A] dark:text-[#dee3ea] min-h-screen flex flex-col font-['Plus_Jakarta_Sans',sans-serif] selection:bg-emerald-500 selection:text-white transition-colors duration-200">
+  <body class="bg-surface text-on-surface min-h-screen flex flex-col font-['Poppins',sans-serif] selection:bg-primary-container selection:text-white transition-colors duration-200">
     <!-- Skip-Link accesible (WCAG 2.2 AAA) -->
     <a 
       href="#contenido-principal" 
-      class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:px-4 focus:py-2 focus:bg-emerald-600 focus:text-white focus:rounded-lg focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:font-semibold text-sm transition-all"
+      class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary focus:text-on-primary focus:rounded-lg focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-primary focus:font-semibold text-sm transition-all"
     >
       Saltar al contenido principal
     </a>
 
-    <!-- Navbar Institucional con Controles de Accesibilidad -->
-    <Navbar client:load />
+    {!hideNavFooter && <Navbar client:load />}
 
     <!-- Main Content Slot -->
     <main id="contenido-principal" class="flex-1 w-full" tabindex="-1">
       <slot />
     </main>
 
-    <!-- Footer Institucional con Respaldo Normativo y Modal Legal -->
-    <FooterLegal client:idle />
+    {!hideNavFooter && <FooterLegal client:idle />}
   </body>
 </html>

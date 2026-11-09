@@ -2,12 +2,8 @@
 /**
  * @file agua.astro
  * @route /agua
- * @description Vista especializada del evaluador normativo de calidad de aguas en Colombia.
- * 
- * Patrones de Implementación:
- * - Islands Architecture: La isla interactiva `<EvaluadorAgua client:load />` gestiona
- *   el ciclo reactivo de inputs, validación contra la matriz legal y renderizado de diagnósticos.
- * - SEO Metadata: Inyección estática de títulos canónicos, normas y directivas de indexación.
+ * @description Vista táctica de telemetría y contrastación normativa de aguas en Colombia.
+ * Renderiza el HUD completo de Mission Control CLI (Stitch v2).
  */
 
 import Layout from '../layouts/Layout.astro';
@@ -15,10 +11,9 @@ import EvaluadorAgua from '../components/EvaluadorAgua.svelte';
 ---
 
 <Layout 
-  title="Monitoreo de Calidad de Agua | Res. 2115/2007, Res. 0631/2015, Dec. 1076/2015"
-  description="Módulo de evaluación fisicoquímica y microbiológica de aguas en Colombia. Selección de norma, parámetros y diagnóstico legal en tiempo real."
+  title="SIMA_TELEMETRY // Analizador Normativo de Agua (Colombia) - Res. 2115/2007"
+  description="Módulo de contrastación analítica fisicoquímica & microbiológica de aguas en Colombia según Res. 2115/2007, Res. 0631/2015 y Dec. 1076/2015."
+  hideNavFooter={true}
 >
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-    <EvaluadorAgua client:load />
-  </div>
+  <EvaluadorAgua client:load />
 </Layout>
